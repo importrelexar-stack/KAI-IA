@@ -60,7 +60,7 @@ def system_status(ctx: Ctx, db: Db) -> dict:
             "history": "available",
             "tasks": "available",
             "cowork_bridge": "manual",
-            "voice": "planned",
+            "voice": "available",
             "agents": "planned",
             "automation": "planned",
             "files": "planned",

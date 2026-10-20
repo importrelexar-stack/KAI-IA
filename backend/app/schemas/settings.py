@@ -19,6 +19,13 @@ class Preferences(BaseModel):
     language: str = Field(default="es-AR", max_length=16)
     user_name: str = Field(default="", max_length=80)
     custom_instructions: str = Field(default="", max_length=4000)
+    # Voz (Fase 2)
+    voice_stt_engine: Literal["local", "browser"] = "local"
+    voice_tts_engine: Literal["local", "browser"] = "local"
+    whisper_model: Literal["tiny", "base", "small"] = "base"
+    piper_voice: Literal["es_AR-daniela-high", "es_MX-claude-high", "es_ES-davefx-medium"] = "es_AR-daniela-high"
+    voice_auto_speak: bool = True
+    voice_handsfree_consent: bool = False
 
     @field_validator("model")
     @classmethod
@@ -38,6 +45,12 @@ class PreferencesUpdate(BaseModel):
     language: str | None = Field(default=None, max_length=16)
     user_name: str | None = Field(default=None, max_length=80)
     custom_instructions: str | None = Field(default=None, max_length=4000)
+    voice_stt_engine: Literal["local", "browser"] | None = None
+    voice_tts_engine: Literal["local", "browser"] | None = None
+    whisper_model: Literal["tiny", "base", "small"] | None = None
+    piper_voice: Literal["es_AR-daniela-high", "es_MX-claude-high", "es_ES-davefx-medium"] | None = None
+    voice_auto_speak: bool | None = None
+    voice_handsfree_consent: bool | None = None
 
     @field_validator("model")
     @classmethod

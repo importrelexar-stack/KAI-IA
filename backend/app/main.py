@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api.v1 import chat, cowork, settings as settings_api, system, tasks
+from app.api.v1 import chat, cowork, settings as settings_api, system, tasks, voice
 from app.core.config import Settings, get_settings
 from app.core.context import AppContext, ProviderFactory, default_provider_factory
 from app.core.errors import KaiError, kai_error_handler
@@ -23,8 +23,15 @@ from app.cowork.bridge import CoworkBridge
 from app.database.session import Database
 from app.security.access import AccessControlMiddleware, RateLimiter, load_or_create_token
 from app.security.secrets import SecretStore
+from app.voice.base import VoiceEngineError
+from app.voice.service import VoiceService
 
 log = logging.getLogger("kai")
+
+
+async def _voice_error_handler(_, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, VoiceEngineError)
+    return JSONResponse(status_code=exc.status_code, content={"error": {"code": exc.code, "message": exc.message}})
 
 
 async def _validation_handler(_, exc: RequestValidationError) -> JSONResponse:
@@ -75,15 +82,17 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
     )
     app.state.ctx = ctx
     app.state.cowork = CoworkBridge(settings.cowork_dir, settings.max_upload_mb * 1024 * 1024)
+    app.state.voice = VoiceService(settings.voice_models_dir, bus)
 
     app.add_exception_handler(KaiError, kai_error_handler)
+    app.add_exception_handler(VoiceEngineError, _voice_error_handler)
     app.add_exception_handler(RequestValidationError, _validation_handler)  # type: ignore[arg-type]
     app.add_middleware(AccessControlMiddleware, token=ctx.access_token, allowed_origins=settings.allowed_origins)
     app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_credentials=False,
                        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
                        allow_headers=["Content-Type", "X-KAI-Token"])
 
-    for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router):
+    for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router, voice.router):
         app.include_router(r, prefix="/api/v1")
 
     _mount_frontend(app, settings.web_dist)

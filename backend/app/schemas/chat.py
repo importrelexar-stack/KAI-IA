@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -9,6 +10,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=100_000)
     conversation_id: str | None = Field(default=None, max_length=32)
     stream: bool = True
+    channel: Literal["text", "voice"] = "text"
 
     @field_validator("message")
     @classmethod

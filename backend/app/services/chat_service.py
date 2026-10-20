@@ -56,7 +56,8 @@ def _next_seq(db: Session, conversation_id: str) -> int:
     return int(current) + 1
 
 
-async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None) -> AsyncIterator[dict[str, Any]]:
+async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None,
+                      channel: str = "text") -> AsyncIterator[dict[str, Any]]:
     """Genera eventos: meta → delta* → done | error."""
     db = ctx.db.SessionLocal()
     state_started = False
@@ -101,7 +102,7 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
         chunks: list[str] = []
         completed: Completed | None = None
         try:
-            async for ev in provider.stream_chat(system=build_system_prompt(prefs), turns=turns, options=options):
+            async for ev in provider.stream_chat(system=build_system_prompt(prefs, voice=channel == "voice"), turns=turns, options=options):
                 if isinstance(ev, TextDelta):
                     chunks.append(ev.text)
                     yield {"type": "delta", "text": ev.text}

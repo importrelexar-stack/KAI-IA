@@ -99,7 +99,7 @@ def test_safe_filename():
 def test_system_status_and_agents(client):
     s = client.get("/api/v1/system/status").json()
     assert s["database"]["ok"] is True and s["provider"]["configured"] is True
-    assert s["features"]["voice"] == "planned"
+    assert s["features"]["voice"] == "available" and s["features"]["agents"] == "planned"
     agents = client.get("/api/v1/agents").json()
     assert {a["id"]: a["status"] for a in agents}["orchestrator"] == "active"
     assert all(a["status"] == "planned" for a in agents if a["id"] != "orchestrator")

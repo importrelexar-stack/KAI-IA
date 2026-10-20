@@ -9,8 +9,11 @@
 
 .PARAMETER Dev
   Instala también las dependencias de desarrollo y pruebas.
+
+.PARAMETER NoVoice
+  No instala los motores de voz locales (Whisper y Piper). KAI usará la voz del navegador.
 #>
-param([switch]$Dev)
+param([switch]$Dev, [switch]$NoVoice)
 
 . "$PSScriptRoot\_common.ps1"
 
@@ -48,6 +51,17 @@ Invoke-Native { & $VenvPython -m pip install --disable-pip-version-check -q --up
 Invoke-Native { & $VenvPython -m pip install --disable-pip-version-check -q -r (Join-Path $BackendDir $req) }
 if ($LASTEXITCODE -ne 0) { Fail "Falló la instalación de dependencias. Revisá tu conexión a Internet y reintentá." }
 Write-Ok "Dependencias instaladas ($req)"
+
+# 3b. Voz local (opcional: si falla, KAI sigue funcionando con la voz del navegador)
+if (-not $NoVoice) {
+    Write-Step "Instalando motores de voz locales (Whisper + Piper, ~150 MB)"
+    Invoke-Native { & $VenvPython -m pip install --disable-pip-version-check -q -r (Join-Path $BackendDir 'requirements-voice.txt') }
+    if ($LASTEXITCODE -eq 0) {
+        Write-Ok "Voz local instalada. Los modelos se descargan desde la pantalla Voz cuando lo decidas."
+    } else {
+        Write-Warn "No se pudieron instalar los motores de voz locales. KAI usará la voz del navegador."
+    }
+}
 
 # 4. .env
 Write-Step "Configuración"

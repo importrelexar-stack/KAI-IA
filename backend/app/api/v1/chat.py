@@ -46,7 +46,7 @@ async def chat(body: ChatRequest, request: Request, ctx: Ctx):  # type: ignore[n
             "No hay una clave de API de Anthropic configurada. El chat real no está disponible: "
             "cargala en Configuración o iniciá en modo demostración."
         )
-    events = stream_chat(ctx, body.message, body.conversation_id)
+    events = stream_chat(ctx, body.message, body.conversation_id, channel=body.channel)
     if body.stream:
         async def sse():  # type: ignore[no-untyped-def]
             async for ev in events:

@@ -72,8 +72,12 @@ class Settings(BaseSettings):
     def cowork_dir(self) -> Path:
         return self.data_dir / "cowork"
 
+    @property
+    def voice_models_dir(self) -> Path:
+        return self.data_dir / "voice-models"
+
     def ensure_dirs(self) -> None:
-        for d in (self.data_dir, self.logs_dir, self.cowork_dir):
+        for d in (self.data_dir, self.logs_dir, self.cowork_dir, self.voice_models_dir):
             d.mkdir(parents=True, exist_ok=True)
 
 

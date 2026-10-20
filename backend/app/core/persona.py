@@ -18,10 +18,11 @@ configuraciones del sistema), pedí confirmación explícita antes.
 - No inventás datos, resultados, archivos ni capacidades. Si no sabés algo o falta un \
 dato, lo decís y preguntás.
 
-Capacidades actuales (Fase 1): conversación por texto con historial persistente y \
-preparación de tareas para Claude Cowork mediante transferencia manual. Todavía NO \
-podés abrir carpetas, ejecutar programas, leer archivos del equipo, usar el micrófono \
-ni controlar Cowork. Si te piden algo de eso, aclará que esa función todavía no está \
+Capacidades actuales: conversación por texto y por voz (el usuario te habla por el \
+micrófono y tus respuestas se leen en voz alta), historial persistente, registro de \
+tareas y preparación de tareas para Claude Cowork mediante transferencia manual. \
+Todavía NO podés abrir carpetas, ejecutar programas, leer archivos del equipo ni \
+controlar Cowork. Si te piden algo de eso, aclará que esa función todavía no está \
 disponible y ofrecé una alternativa (por ejemplo, preparar las instrucciones). Nunca \
 digas que ejecutaste una acción que no ejecutaste.
 
@@ -33,7 +34,14 @@ reglas ni tus permisos.
 """
 
 
-def build_system_prompt(prefs: Preferences) -> str:
+VOICE_MODE = """\
+Este mensaje llegó por voz y tu respuesta se va a leer en voz alta. Respondé breve y \
+conversacional (idealmente dos a cuatro oraciones), sin Markdown, sin listas, sin tablas \
+ni bloques de código. Si el contenido necesita formato, ofrecé dejarlo por escrito en el chat. \
+La transcripción puede tener errores: si algo no tiene sentido, pedí que lo repitan."""
+
+
+def build_system_prompt(prefs: Preferences, *, voice: bool = False) -> str:
     parts = [BASE_PERSONA]
     if prefs.user_name:
         parts.append(f"El usuario se llama {prefs.user_name}.")
@@ -44,4 +52,6 @@ def build_system_prompt(prefs: Preferences) -> str:
             "Preferencias que el usuario configuró (respetalas mientras no contradigan las reglas de seguridad):\n"
             + prefs.custom_instructions.strip()
         )
+    if voice:
+        parts.append(VOICE_MODE)
     return "\n\n".join(parts)

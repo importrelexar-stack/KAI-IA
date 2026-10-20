@@ -59,6 +59,9 @@ class StateManager:
         self._detail: str | None = None
         self._active = 0
         self._reset_task: asyncio.Task[None] | None = None
+        # Estado informado por la interfaz de voz (escuchando / hablando). Sólo se muestra
+        # cuando KAI Core no tiene trabajo propio en curso.
+        self._client_state: AssistantState | None = None
 
     @property
     def state(self) -> AssistantState:
@@ -81,10 +84,23 @@ class StateManager:
         self._active += 1
         self._set(state, detail)
 
+    def _resting(self) -> AssistantState:
+        return self._client_state or AssistantState.IDLE
+
+    def set_client_state(self, state: AssistantState | None) -> None:
+        """La interfaz informa que está escuchando o reproduciendo voz (None = terminó)."""
+        if state not in (None, AssistantState.LISTENING, AssistantState.SPEAKING):
+            raise ValueError("Estado de cliente inválido")
+        self._client_state = state
+        if self._active == 0:
+            self._cancel_reset()
+            self._set(self._resting(), "Escuchando" if state == AssistantState.LISTENING
+                      else "Hablando" if state == AssistantState.SPEAKING else None)
+
     def end(self) -> None:
         self._active = max(0, self._active - 1)
         if self._active == 0 and self._state != AssistantState.ERROR:
-            self._set(AssistantState.IDLE)
+            self._set(self._resting())
 
     def fail(self, detail: str) -> None:
         self._active = max(0, self._active - 1)
@@ -106,6 +122,6 @@ class StateManager:
         async def _reset() -> None:
             await asyncio.sleep(self.ERROR_RESET_SECONDS)
             if self._active == 0:
-                self._set(AssistantState.IDLE)
+                self._set(self._resting())
 
         self._reset_task = loop.create_task(_reset())
