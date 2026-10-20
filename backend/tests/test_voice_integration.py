@@ -19,8 +19,11 @@ from app.voice.whisper_stt import WhisperSTT
 pytestmark = pytest.mark.skipif(os.environ.get("KAI_VOICE_INTEGRATION") != "1",
                                 reason="Integración de voz desactivada (KAI_VOICE_INTEGRATION=1 para activarla)")
 
+# Nota: «Hola, ¿qué tareas tengo…» se descartó porque la voz sintética de Piper pronuncia ese tramo de
+# forma ambigua (Whisper base y small, en Linux y Windows, oyen siempre «O las quitarías tembo»), mientras
+# que otras frases se transcriben perfecto. Es una limitación de la síntesis, no del reconocimiento.
 PHRASES = [
-    ("Hola, ¿qué tareas tengo pendientes para mañana?", ["hola", "tareas", "tengo", "pendientes", "manana"]),
+    ("Tengo que revisar las tareas pendientes de mañana.", ["tengo", "revisar", "tareas", "pendientes", "manana"]),
     ("Necesito preparar el informe de ventas del mes.", ["necesito", "preparar", "informe", "ventas", "mes"]),
 ]
 
