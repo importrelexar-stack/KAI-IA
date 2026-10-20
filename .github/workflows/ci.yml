@@ -54,6 +54,30 @@ jobs:
       - name: install.ps1
         shell: powershell
         run: .\scripts\install.ps1
+      - name: Acceso directo en el escritorio
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $desk = [Environment]::GetFolderPath('Desktop')
+          $lnk = Join-Path $desk 'KAI AI.lnk'
+          if (-not (Test-Path $lnk)) { throw "install.ps1 no creó el acceso directo en $desk" }
+          $ws = New-Object -ComObject WScript.Shell
+          $s = $ws.CreateShortcut($lnk)
+          $expected = (Resolve-Path .\start.bat).Path
+          if ($s.TargetPath -ine $expected) { throw "apunta a '$($s.TargetPath)' en vez de '$expected'" }
+          if ($s.IconLocation -notmatch 'icon\.ico') { throw "sin el ícono de KAI: $($s.IconLocation)" }
+          # Repetir no duplica; un «KAI AI» ajeno no se pisa; -Remove sólo quita los propios.
+          .\scripts\create-shortcut.ps1
+          if (Test-Path (Join-Path $desk 'KAI AI (scripts).lnk')) { throw "se duplicó el acceso directo" }
+          $foreign = $ws.CreateShortcut($lnk); $foreign.TargetPath = "$env:WINDIR\notepad.exe"; $foreign.Save()
+          .\scripts\create-shortcut.ps1
+          if ($ws.CreateShortcut($lnk).TargetPath -notmatch 'notepad') { throw "pisó un acceso directo ajeno" }
+          if (-not (Test-Path (Join-Path $desk 'KAI AI (scripts).lnk'))) { throw "no creó el alternativo" }
+          .\scripts\create-shortcut.ps1 -Remove
+          if (Test-Path (Join-Path $desk 'KAI AI (scripts).lnk')) { throw "-Remove no quitó el propio" }
+          if (-not (Test-Path $lnk)) { throw "-Remove quitó uno ajeno" }
+          Remove-Item $lnk
+          Write-Host "Acceso directo OK: $expected"
       - name: start.ps1 (demo) + chat + stop.ps1
         shell: powershell
         run: |

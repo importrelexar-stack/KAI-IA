@@ -35,7 +35,8 @@ Después, en **Configuración**, cargá tu clave de API de Anthropic (o ponela e
 
 | Acción | Comando |
 |---|---|
-| Instalar | `.\install.bat` o `scripts\install.ps1 [-Dev]` |
+| Instalar (crea el acceso «KAI AI» en el escritorio) | `.\install.bat` o `scripts\install.ps1 [-Dev] [-NoShortcut]` |
+| Acceso directo en el escritorio | `.\crear-acceso-directo.bat` (`-StartMenu` también en el menú Inicio, `-Remove` lo quita) |
 | Iniciar | `.\start.bat` o `scripts\start.ps1` |
 | Modo demostración (sin IA) | `scripts\start.ps1 -Demo` |
 | Detener | `.\stop.bat` o `scripts\stop.ps1` |

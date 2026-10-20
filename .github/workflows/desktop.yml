@@ -88,6 +88,24 @@ jobs:
           taskkill /PID $app.Id /T /F | Out-Null
           Get-Process kai-core -ErrorAction SilentlyContinue | Stop-Process -Force
 
+      - name: Instalador NSIS (silencioso) y accesos directos
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Get-ChildItem apps\desktop\src-tauri\target\release\bundle\nsis\*.exe | Select-Object -First 1
+          $p = Start-Process $setup.FullName -ArgumentList '/S' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "el instalador terminó con código $($p.ExitCode)" }
+          $installed = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter kai-desktop.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $installed) { throw "no se encontró kai-desktop.exe instalado en %LOCALAPPDATA%" }
+          Write-Host "Instalado en: $($installed.FullName)"
+          $ws = New-Object -ComObject WScript.Shell
+          $desk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'KAI AI.lnk'
+          $menu = Get-ChildItem ([Environment]::GetFolderPath('Programs')) -Recurse -Filter 'KAI AI.lnk' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $menu) { throw "el instalador no creó el acceso en el menú Inicio" }
+          if (-not (Test-Path $desk)) { throw "el instalador no creó el acceso directo en el escritorio" }
+          if ($ws.CreateShortcut($desk).TargetPath -ine $installed.FullName) { throw "el acceso del escritorio apunta a $($ws.CreateShortcut($desk).TargetPath)" }
+          Write-Host "Accesos directos OK: escritorio y menú Inicio -> $($installed.FullName)"
+
       - name: Publicar instalador
         uses: actions/upload-artifact@v4
         with:

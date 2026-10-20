@@ -5,7 +5,8 @@
 1. Descargá `KAI AI_x.y.z_x64-setup.exe` del release **desktop-latest** del repositorio.
 2. Ejecutalo (instala para tu usuario, sin permisos de administrador). Si SmartScreen avisa que el
    archivo no está firmado: «Más información» → «Ejecutar de todos modos».
-3. Abrí **KAI AI** desde el menú Inicio. La primera vez tarda unos segundos en iniciar.
+3. Abrí **KAI AI** con el acceso directo del escritorio o desde el menú Inicio (el instalador crea los
+   dos). La primera vez tarda unos segundos en iniciar.
 4. Configurá tu clave de API en Configuración.
 
 Datos en `%LOCALAPPDATA%\KAI`. Para salir: ícono de KAI en la bandeja → Salir. Atajo: Ctrl+Alt+K.
@@ -121,3 +122,11 @@ Todo queda en `data\` (excluido de git): `kai.db` (SQLite), `logs\`, `cowork\` (
 Detené KAI, borrá la carpeta del repositorio y, si guardaste la clave desde la interfaz, eliminá la
 credencial `kai-ai` en *Panel de control → Administrador de credenciales → Credenciales de Windows*
 (o usá **Borrar** en Configuración antes de desinstalar).
+
+## Acceso directo en el escritorio
+
+- **App de escritorio:** el instalador crea «KAI AI» en el escritorio y en el menú Inicio.
+- **Desde el código:** `install.bat` crea «KAI AI» en el escritorio (abre `start.bat` con el ícono de
+  KAI). Si lo borraste o lo querés también en el menú Inicio: doble clic en `crear-acceso-directo.bat`
+  (o `scripts\create-shortcut.ps1 -StartMenu`). Para quitarlo: `scripts\create-shortcut.ps1 -Remove`.
+  Si ya existe un «KAI AI» de la app instalada, el script no lo pisa y crea «KAI AI (scripts)».

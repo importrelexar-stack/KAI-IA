@@ -92,8 +92,18 @@ if (Test-Path $dist) {
     }
 }
 
+# 6. Acceso directo
+if (-not $NoShortcut) {
+    Write-Step "Acceso directo en el escritorio"
+    try {
+        & "$PSScriptRoot\create-shortcut.ps1"
+    } catch {
+        Write-Warn "No se pudo crear el acceso directo: $($_.Exception.Message). Podés crearlo después con crear-acceso-directo.bat"
+    }
+}
+
 Write-Host ""
 Write-Host "Instalación terminada." -ForegroundColor Green
 Write-Host "  1. (Opcional) Poné tu clave en .env (ANTHROPIC_API_KEY) o cargala luego desde Configuración."
-Write-Host "  2. Iniciá KAI con:  scripts\start.ps1   (o doble clic en start.bat)"
+Write-Host "  2. Iniciá KAI con el acceso directo «KAI AI» del escritorio (o doble clic en start.bat)"
 Write-Host ""
