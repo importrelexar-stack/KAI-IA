@@ -3,7 +3,7 @@
   "info": {
     "title": "KAI Core API",
     "description": "API local de KAI AI. Escucha sólo en 127.0.0.1 por defecto.",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -151,6 +151,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/attachments": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Adjuntar un documento (texto, PDF, Word) o una imagen al próximo mensaje",
+        "operationId": "upload_attachment_api_v1_chat_attachments_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_attachment_api_v1_chat_attachments_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentOut"
                 }
               }
             }
@@ -2195,6 +2236,238 @@
           }
         }
       }
+    },
+    "/api/v1/devices/remote": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Estado del acceso remoto",
+        "operationId": "remote_status_api_v1_devices_remote_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Remote Status Api V1 Devices Remote Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Activar o desactivar el acceso remoto (requiere reiniciar KAI)",
+        "operationId": "set_remote_api_v1_devices_remote_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Set Remote Api V1 Devices Remote Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/pairing": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Generar un código de vinculación (5 minutos, un solo uso)",
+        "operationId": "create_pairing_api_v1_devices_pairing_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Pairing Api V1 Devices Pairing Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/pair": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Vincular un dispositivo con el código (lo usa la app del teléfono)",
+        "operationId": "pair_api_v1_devices_pair_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Pair Api V1 Devices Pair Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/me": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "El dispositivo que hace la consulta",
+        "operationId": "me_api_v1_devices_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Me Api V1 Devices Me Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "El teléfono se desvincula a sí mismo (revoca su token)",
+        "operationId": "unpair_me_api_v1_devices_me_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Dispositivos vinculados",
+        "operationId": "list_devices_api_v1_devices_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Devices Api V1 Devices Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{device_id}": {
+      "delete": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Revocar un dispositivo",
+        "operationId": "revoke_device_api_v1_devices__device_id__delete",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2283,6 +2556,44 @@
         ],
         "title": "AppEntry"
       },
+      "AttachmentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "media_type": {
+            "type": "string",
+            "title": "Media Type"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "chars": {
+            "type": "integer",
+            "title": "Chars",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "media_type",
+          "size"
+        ],
+        "title": "AttachmentOut"
+      },
       "Body_transcribe_api_v1_voice_transcribe_post": {
         "properties": {
           "audio": {
@@ -2308,6 +2619,20 @@
         ],
         "title": "Body_transcribe_api_v1_voice_transcribe_post"
       },
+      "Body_upload_attachment_api_v1_chat_attachments_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_attachment_api_v1_chat_attachments_post"
+      },
       "Body_upload_file_api_v1_cowork_handoffs__handoff_id__files_post": {
         "properties": {
           "file": {
@@ -2327,8 +2652,8 @@
           "message": {
             "type": "string",
             "maxLength": 100000,
-            "minLength": 1,
-            "title": "Message"
+            "title": "Message",
+            "default": ""
           },
           "conversation_id": {
             "anyOf": [
@@ -2355,12 +2680,17 @@
             ],
             "title": "Channel",
             "default": "text"
+          },
+          "attachment_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Attachment Ids"
           }
         },
         "type": "object",
-        "required": [
-          "message"
-        ],
         "title": "ChatRequest"
       },
       "ChatResponse": {
@@ -2707,6 +3037,65 @@
           "untrusted_notice"
         ],
         "title": "CoworkStatus"
+      },
+      "DeviceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "revoked": {
+            "type": "boolean",
+            "title": "Revoked"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "last_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ip"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "platform",
+          "revoked",
+          "last_seen_at",
+          "last_ip",
+          "created_at"
+        ],
+        "title": "DeviceOut"
       },
       "EngineOut": {
         "properties": {
@@ -3056,6 +3445,21 @@
             ],
             "title": "Tool Events"
           },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachments"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3070,6 +3474,34 @@
           "created_at"
         ],
         "title": "MessageOut"
+      },
+      "PairIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 6,
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "default": "Teléfono"
+          },
+          "platform": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Platform",
+            "default": "android"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "PairIn"
       },
       "Permissions": {
         "properties": {
@@ -3713,6 +4145,19 @@
         },
         "type": "object",
         "title": "ProjectPatch"
+      },
+      "RemoteIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "RemoteIn"
       },
       "ScriptEntry": {
         "properties": {

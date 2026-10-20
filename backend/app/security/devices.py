@@ -179,6 +179,7 @@ _DEVICE_RULES: list[tuple[set[str], re.Pattern[str]]] = [
     ({"POST"}, re.compile(r"^/api/v1/tasks/[^/]+/(approval|transition)$")),
     ({"POST"}, re.compile(r"^/api/v1/memory/[^/]+/approve$")),
     ({"PATCH", "DELETE"}, re.compile(r"^/api/v1/conversations/[^/]+$")),
+    ({"DELETE"}, re.compile(r"^/api/v1/devices/me$")),
     ({"GET"}, re.compile(r"^/api/v1/ws/events$")),
 ]
 

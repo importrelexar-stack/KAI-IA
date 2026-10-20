@@ -40,10 +40,23 @@ Ctrl+Alt+K, instancia única, cierre ordenado y watchdog. Build y prueba automá
 Pendiente: firma digital del instalador, actualización automática, voz/«Hey KAI» con la ventana oculta,
 lectura de planillas Excel.
 
-## Fase 5 — Android
+## 🧪 Fase 5 — Android (beta, esta versión)
 
-App Kotlin + Compose, emparejamiento seguro por QR, conexión por VPN privada, chat, voz, tareas,
-historial y notificaciones.
+KAI Core: acceso remoto sólo desde redes privadas (LAN / Tailscale) y con interruptor, vinculación por
+código de un solo uso con QR, token por dispositivo (hash, revocable, el teléfono puede desvincularse),
+permisos limitados para dispositivos (no administran KAI), adjuntos en el chat (documentos como datos,
+imágenes visibles para Claude) desde la web y el teléfono.
+
+App Kotlin + Compose: vinculación por QR o a mano, chat en streaming, adjuntar archivos y fotos
+(se achican antes de enviar), voz (graba en el teléfono, transcribe y habla con los motores locales de la PC),
+tareas con autorizar/rechazar mostrando la acción exacta, historial, notificaciones de autorizaciones
+(cada 15 min y con la app abierta), token cifrado con Android Keystore. Compilación, lint y pruebas en CI,
+más una prueba de contrato del cliente contra KAI Core real.
+
+Por qué «beta»: el APK se compila y prueba en CI, pero todavía no se probó en un teléfono físico.
+
+Pendiente: notificaciones en tiempo real (push sin Google requiere un servicio en primer plano), «Hey KAI»
+en el teléfono, firma de release y publicación en tiendas, renderizado Markdown en las respuestas.
 
 ## Fase 6 — Integraciones
 

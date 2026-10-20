@@ -104,6 +104,15 @@ def me(request: Request) -> dict[str, Any]:
     return {"id": device.id, "name": device.name, "platform": device.platform}
 
 
+@router.delete("/me", status_code=204, summary="El teléfono se desvincula a sí mismo (revoca su token)")
+def unpair_me(request: Request, db: Db) -> None:
+    device = getattr(request.state, "device", None)
+    if device is None:
+        raise KaiError("Esta acción es para dispositivos vinculados.", code="not_a_device", status_code=400)
+    dev.revoke(db, device.id)
+    audit(db, "devices.unpaired", target=device.id, details={"name": device.name}, client=client_id(request))
+
+
 @router.get("", response_model=list[DeviceOut], summary="Dispositivos vinculados", dependencies=[Local])
 def list_devices(db: Db) -> list[Device]:
     return list(db.execute(select(Device).order_by(Device.created_at.desc())).scalars())

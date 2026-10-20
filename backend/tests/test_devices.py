@@ -108,6 +108,14 @@ def test_revoked_device_is_rejected(client):
     assert remote.get("/api/v1/health", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
 
+def test_device_can_unpair_itself(client):
+    remote = _remote(client)
+    auth = {"Authorization": f"Bearer {_pair(client, remote)}"}
+    assert remote.delete("/api/v1/devices/me", headers=auth).status_code == 204
+    assert remote.get("/api/v1/health", headers=auth).status_code == 401
+    assert client.get("/api/v1/devices").json()[0]["revoked"] is True
+
+
 def test_pairing_code_expires_and_locks(client):
     client.put("/api/v1/devices/remote", json={"enabled": True})
     code = client.post("/api/v1/devices/pairing").json()["code"]

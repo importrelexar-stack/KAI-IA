@@ -66,9 +66,10 @@ def system_status(ctx: Ctx, db: Db) -> dict:
             "voice": "available",
             "agents": "available" if prefs.agents_enabled else "disabled",
             "memory": "available" if prefs.memory_enabled else "disabled",
-            "automation": "planned",
-            "files": "planned",
-            "android": "planned",
+            "automation": "available",
+            "files": "available",
+            "attachments": "available",
+            "android": "beta",
         },
     }
 

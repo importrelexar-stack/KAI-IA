@@ -22,13 +22,17 @@ externo manipule al asistente; y gastos descontrolados.
 | Memoria | Sólo lo aprobado por el usuario se usa; lo que propone KAI queda pendiente. Se rechazan contraseñas, claves y números de tarjeta. Todo es consultable, editable y eliminable (individual o total). La memoria se inyecta como datos marcados, no como instrucciones. |
 | Herramientas del orquestador | Entradas validadas con esquemas estrictos; herramientas sin efectos destructivos ni acceso al sistema; límite de pasos, tokens y tiempo por respuesta; auditoría de cada uso; tareas sensibles creadas por KAI requieren autorización. La búsqueda web está desactivada por defecto. |
 | Archivos y programas (Fase 4) | Nada accesible por defecto; carpetas autorizadas por el usuario con modo lectura o escritura; bloqueo permanente de carpetas del sistema, AppData, datos de KAI y archivos de credenciales; resolución de enlaces simbólicos; sin borrado definitivo (papelera) ni sobrescritura sin copia; sin comandos libres (sólo apps y scripts registrados, sin shell, con tiempo máximo); acciones que modifican algo con confirmación por defecto y permisos re-verificados al ejecutar; el contenido leído se marca como dato, no instrucción; auditoría de permisos y ejecuciones. |
+| Acceso remoto y teléfonos (Fase 5) | Apagado por defecto; con el interruptor activo KAI escucha en la red pero sólo acepta clientes de redes privadas (10/8, 172.16/12, 192.168/16, Tailscale 100.64/10, IPv6 ULA) — nunca IPs públicas ni redes de documentación — y con encabezado Host privado/`.ts.net`/`.local`. Vinculación por código de 8 caracteres, 5 minutos, un solo uso, bloqueo tras 10 intentos fallidos y límite de 5 intentos por minuto por IP. Token por dispositivo guardado como hash SHA-256, revocable desde la PC o desde el propio teléfono. Lista blanca de lo que puede hacer un dispositivo (chat, adjuntos, voz, tareas, historial, memoria); no puede tocar la clave de API, permisos, acceso remoto ni dispositivos. Auditoría con el nombre del dispositivo. En el teléfono el token se cifra con Android Keystore y la app se niega a conectarse fuera de la red privada. |
+| Adjuntos | Tamaño máximo configurable (imágenes ≤ 5 MB); los documentos se convierten a texto y se entregan a Claude marcados como datos, no instrucciones; las imágenes sólo se envían en el turno actual. |
 | Validación | Pydantic en todas las entradas con límites de tamaño; errores uniformes sin trazas internas. |
 | Trazabilidad | `audit_log` para cambios de configuración, clave, tareas, Cowork, borrados y errores de chat. |
 
 ## Recomendaciones
 
-- No cambies `KAI_HOST` a `0.0.0.0` ni abras el puerto en el firewall. Para el acceso desde Android
-  (Fase 5) se usará una VPN privada, nunca un puerto público.
+- No abras el puerto de KAI en el router ni lo redirijas a Internet. Para usar KAI desde el teléfono fuera
+  de casa usá Tailscale (VPN privada cifrada). En el firewall de Windows permití KAI sólo en «Redes privadas».
+- En una Wi-Fi sin Tailscale el tráfico teléfono↔PC va sin cifrar: usá el acceso remoto sólo en redes de
+  confianza y revocá los teléfonos que ya no uses (KAI → Dispositivos).
 - No compartas `data/access_token` ni el archivo `.env`.
 - Configurá un límite de gasto también en la consola de Anthropic.
 

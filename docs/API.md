@@ -8,7 +8,8 @@ Errores con formato uniforme:
 { "error": { "code": "provider_not_configured", "message": "…", "details": [] } }
 ```
 
-Clientes que no sean locales deben enviar `X-KAI-Token: <data/access_token>`.
+Clientes que no sean locales (teléfonos en la red privada, con el acceso remoto activado) envían
+`Authorization: Bearer kaid_…` (token del dispositivo) — o `X-KAI-Token: <data/access_token>` como administrador.
 
 ## Sistema
 
@@ -25,8 +26,10 @@ Clientes que no sean locales deben enviar `X-KAI-Token: <data/access_token>`.
 `POST /chat`
 
 ```json
-{ "message": "Hola KAI", "conversation_id": null, "stream": true }
+{ "message": "Hola KAI", "conversation_id": null, "stream": true, "channel": "text", "attachment_ids": [] }
 ```
+
+`message` puede ir vacío si hay `attachment_ids` (máx. 5, subidos antes con `POST /chat/attachments`).
 
 - `stream: true` → `text/event-stream`:
 
@@ -54,6 +57,22 @@ Códigos: `503 provider_not_configured`, `429 rate_limited` / `budget_exceeded`,
 | PATCH | `/conversations/{id}` | Renombrar `{ "title": "…" }` |
 | DELETE | `/conversations/{id}` | Eliminar (auditada) |
 | DELETE | `/conversations?confirm=true` | Eliminar todo (sin `confirm` → `428`) |
+| POST | `/chat/attachments` | Multipart `file`: documento (texto/PDF/Word → texto extraído) o imagen (JPEG/PNG/WebP/GIF ≤ 5 MB). Devuelve `{id, name, kind, media_type, size, chars}` |
+
+## Dispositivos (Fase 5)
+
+| Método | Ruta | Quién | Descripción |
+|---|---|---|---|
+| GET / PUT | `/devices/remote` | sólo la PC | Estado / activar acceso remoto `{ "enabled": true }` (requiere reiniciar KAI) |
+| POST | `/devices/pairing` | sólo la PC | Código de 8 caracteres, vencimiento, URLs, `payload` (`kai://pair?c=…&u=…`) y `qr_svg` |
+| POST | `/devices/pair` | teléfono | `{ "code", "name", "platform" }` → `{ "token", "device_id", "name" }` (5 intentos/min) |
+| GET | `/devices/me` | teléfono | Dispositivo que consulta |
+| DELETE | `/devices/me` | teléfono | Desvincularse (revoca su token) |
+| GET | `/devices` | sólo la PC | Dispositivos vinculados |
+| DELETE | `/devices/{id}` | sólo la PC | Revocar |
+
+Errores: `403 public_network`, `403 remote_disabled`, `401 unauthorized`, `403 device_forbidden`,
+`403 local_only`, `403 invalid_pairing_code`.
 
 ## Configuración
 
