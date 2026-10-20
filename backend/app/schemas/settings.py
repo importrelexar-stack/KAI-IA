@@ -1,0 +1,80 @@
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
+
+from app.providers.anthropic_provider import DEFAULT_MODEL, EFFORT_LEVELS, SUPPORTED_MODELS
+
+
+class Preferences(BaseModel):
+    """Preferencias editables desde la interfaz (persisten en SQLite)."""
+
+    model: str = DEFAULT_MODEL
+    effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
+    max_tokens: int = Field(default=16000, ge=256, le=64000)
+    history_window: int = Field(default=40, ge=2, le=200, description="Mensajes previos enviados como contexto")
+    daily_token_budget: int = Field(default=500_000, ge=0, description="0 = sin límite")
+    use_fallbacks: bool = True
+    language: str = Field(default="es-AR", max_length=16)
+    user_name: str = Field(default="", max_length=80)
+    custom_instructions: str = Field(default="", max_length=4000)
+
+    @field_validator("model")
+    @classmethod
+    def _model_supported(cls, v: str) -> str:
+        if v not in SUPPORTED_MODELS:
+            raise ValueError(f"Modelo no soportado. Opciones: {', '.join(SUPPORTED_MODELS)}")
+        return v
+
+
+class PreferencesUpdate(BaseModel):
+    model: str | None = None
+    effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
+    max_tokens: int | None = Field(default=None, ge=256, le=64000)
+    history_window: int | None = Field(default=None, ge=2, le=200)
+    daily_token_budget: int | None = Field(default=None, ge=0)
+    use_fallbacks: bool | None = None
+    language: str | None = Field(default=None, max_length=16)
+    user_name: str | None = Field(default=None, max_length=80)
+    custom_instructions: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("model")
+    @classmethod
+    def _model_supported(cls, v: str | None) -> str | None:
+        return v if v is None else Preferences._model_supported(v)
+
+
+class ApiKeyStatus(BaseModel):
+    configured: bool
+    source: Literal["env", "keyring", "memory", "none"]
+    masked: str | None
+    keyring_available: bool
+    persisted: bool
+
+
+class ApiKeyIn(BaseModel):
+    api_key: str = Field(min_length=20, max_length=300)
+
+    @field_validator("api_key")
+    @classmethod
+    def _looks_like_key(cls, v: str) -> str:
+        v = v.strip()
+        if not v.startswith("sk-ant-"):
+            raise ValueError("La clave de API de Anthropic empieza con 'sk-ant-'.")
+        if any(c.isspace() for c in v):
+            raise ValueError("La clave no puede contener espacios.")
+        return v
+
+
+class SettingsOut(BaseModel):
+    preferences: Preferences
+    api_key: ApiKeyStatus
+    demo_mode: bool
+    models: dict[str, str] = SUPPORTED_MODELS
+    effort_levels: tuple[str, ...] = EFFORT_LEVELS
+
+
+class ValidationOut(BaseModel):
+    ok: bool
+    message: str

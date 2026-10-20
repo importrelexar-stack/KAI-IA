@@ -1,0 +1,33 @@
+# Secretos y datos locales
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+apps/web/dist/
+*.tsbuildinfo
+
+# Tauri / Rust / Android (fases futuras)
+target/
+apps/android/.gradle/
+apps/android/build/
+apps/android/local.properties
+
+# SO / editores
+.DS_Store
+Thumbs.db
+.idea/
