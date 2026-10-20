@@ -14,9 +14,11 @@ intercambiables.
 
 ## Instalar la app de escritorio (recomendado)
 
-Descargá el instalador desde el release **desktop-latest** del repositorio (o el artefacto
-`KAI-AI-instalador-windows` del workflow «App de escritorio»). No necesita Python ni Node.js. Ver
-[apps/desktop/README.md](apps/desktop/README.md).
+**[⬇ Descargar Instalar-KAI-AI.exe](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-windows/Instalar-KAI-AI.exe)** → doble clic → «Siguiente». No pide permisos de
+administrador ni necesita Python o Node.js, y crea el acceso «KAI AI» en el escritorio. Si SmartScreen avisa
+que no está firmado: «Más información» → «Ejecutar de todos modos». Ver [apps/desktop/README.md](apps/desktop/README.md).
+
+Android (beta): **[⬇ KAI-AI.apk](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-android/KAI-AI.apk)** (abrilo desde el teléfono).
 
 ## Inicio rápido desde el código (Windows)
 

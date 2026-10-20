@@ -9,8 +9,8 @@ a Internet.
 
 ## Instalar
 
-1. Descargá `kai-android.apk` de la release **android-latest** del repositorio (o el artefacto
-   `kai-android-debug` de la última ejecución del workflow «App Android»).
+1. Desde el teléfono, abrí **[KAI-AI.apk](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-android/KAI-AI.apk)** (enlace directo; también está el artefacto
+   `kai-android-debug` de cada ejecución del workflow «App Android»).
 2. En el teléfono, permití instalar apps de «orígenes desconocidos» para el navegador/gestor de archivos
    y abrí el APK. (Es un APK de depuración firmado con la clave de desarrollo, para uso personal.)
 

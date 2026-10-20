@@ -20,7 +20,7 @@ instalar Python ni Node.js).
 El workflow **App de escritorio (Windows)** genera el instalador en cada cambio:
 
 - Artefacto `KAI-AI-instalador-windows` en cada ejecución del workflow.
-- Release `desktop-latest` del repositorio con el instalador del último `main`.
+- Descarga directa [Instalar-KAI-AI.exe](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-windows/Instalar-KAI-AI.exe) (release `kai-ai-windows`, se actualiza con cada cambio).
 
 El instalador es por usuario (no pide permisos de administrador). Windows SmartScreen puede advertir
 porque el instalador no está firmado digitalmente: «Más información» → «Ejecutar de todos modos».

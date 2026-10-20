@@ -65,13 +65,14 @@ jobs:
           path: apps/android/app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
 
-      - name: Publicar APK (android-latest)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Publicar descarga directa (KAI-AI.apk)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ccr-3ff91a96-1k2j0k')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp apps/android/app/build/outputs/apk/debug/app-debug.apk kai-android.apk
+          cp apps/android/app/build/outputs/apk/debug/app-debug.apk KAI-AI.apk
+          gh release delete kai-ai-android --yes --cleanup-tag || true
           gh release delete android-latest --yes --cleanup-tag || true
-          gh release create android-latest kai-android.apk --title "KAI Android (última de main)" \
-            --notes "APK de depuración firmada con la clave de desarrollo. Instalación manual (permitir orígenes desconocidos). Ver apps/android/README.md." \
-            --target "$GITHUB_SHA" --prerelease
+          gh release create kai-ai-android KAI-AI.apk --target "$GITHUB_SHA" --prerelease \
+            --title "KAI AI para Android (beta)" \
+            --notes "Abrí este enlace desde el teléfono, descargá **KAI-AI.apk** e instalala (permití instalar apps de este origen). APK de prueba firmada con la clave de desarrollo. Generado desde ${GITHUB_SHA::7}."

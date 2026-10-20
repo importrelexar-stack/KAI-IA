@@ -2,7 +2,7 @@
 
 ## Opción A — App de escritorio (recomendada)
 
-1. Descargá `KAI AI_x.y.z_x64-setup.exe` del release **desktop-latest** del repositorio.
+1. Descargá **[Instalar-KAI-AI.exe](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-windows/Instalar-KAI-AI.exe)** (enlace directo, no hace falta cuenta de GitHub).
 2. Ejecutalo (instala para tu usuario, sin permisos de administrador). Si SmartScreen avisa que el
    archivo no está firmado: «Más información» → «Ejecutar de todos modos».
 3. Abrí **KAI AI** con el acceso directo del escritorio o desde el menú Inicio (el instalador crea los
