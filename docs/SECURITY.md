@@ -18,6 +18,7 @@ externo manipule al asistente; y gastos descontrolados.
 | Acciones sensibles | Motor de tareas con autorización obligatoria (`requires_approval`); un reintento invalida la autorización previa. Borrado total del historial requiere `confirm=true`. KAI no ejecuta herramientas en la Fase 1. |
 | Costos | Presupuesto diario de tokens, límite de mensajes por minuto, registro de consumo, caché de prompt, esfuerzo bajo por defecto. |
 | Archivos importados | Nombres saneados (sin rutas, sin nombres reservados de Windows), confinados a `data/cowork/<id>/`, sin sobrescritura, tamaño máximo configurable. Descarga sólo de archivos registrados. |
+| Micrófono y privacidad | El micrófono sólo se abre al tocar «Hablar» o con «manos libres» activado tras un consentimiento explícito (revocable), con indicador visible, y se cierra al salir de la pantalla. Manos libres exige reconocimiento local: el audio no sale del equipo y sólo lo que empieza con «Hey KAI» llega a Claude. El audio nunca se guarda. El reconocimiento del navegador (opcional) se identifica como servicio en la nube. |
 | Validación | Pydantic en todas las entradas con límites de tamaño; errores uniformes sin trazas internas. |
 | Trazabilidad | `audit_log` para cambios de configuración, clave, tareas, Cowork, borrados y errores de chat. |
 

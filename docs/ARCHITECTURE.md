@@ -48,12 +48,32 @@ Eventos SSE: `meta` (ids y título) → `delta`* → `done` | `error`.
 Para agregar otro proveedor: implementar `AIProvider` y registrarlo en `core/context.py`
 (`provider_factory`). KAI Core no conoce detalles de ningún proveedor fuera de esa interfaz.
 
+## Voz
+
+```
+Interfaz: micrófono → AudioWorklet (PCM) → detector de voz (energía + ruido adaptativo, pre-roll 450 ms)
+          → WAV 16 kHz mono en memoria → POST /voice/transcribe
+KAI Core: WhisperSTT (faster-whisper, CPU int8, VAD) → texto → /chat (channel=voice) → Claude
+          → respuesta → POST /voice/synthesize → PiperTTS (es_AR) → WAV → reproducción (setSinkId)
+```
+
+- `voice/base.py` define `SpeechToText` y `TextToSpeech`; `WhisperSTT` y `PiperTTS` son las
+  implementaciones locales; la interfaz puede usar la Web Speech API del navegador como alternativa.
+- Los modelos se cargan de forma diferida y se ejecutan en hilos (`asyncio.to_thread`) con un lock por motor.
+- La descarga de modelos es explícita (botón) y se informa por WebSocket.
+- **Manos libres**: la interfaz entrega cada frase detectada a Whisper local; sólo si empieza con «Hey KAI»
+  (variantes tolerantes: «Ey Kai», «Oye Kay»…) se envía la orden a Claude. Durante la respuesta hablada, si
+  el usuario habla, se interrumpe (barge-in).
+- Estados: la interfaz informa `listening` / `speaking` (`/voice/state`); KAI Core los muestra cuando no
+  tiene trabajo propio (`processing` tiene prioridad).
+- El audio nunca se escribe en disco ni en la base.
+
 ## Estado del asistente
 
 `StateManager` mantiene el estado real (`idle`, `listening`, `processing`, `speaking`, `executing`,
 `error`), cuenta operaciones concurrentes y publica cada cambio en el `EventBus`. El WebSocket
-`/api/v1/ws/events` reenvía esos eventos (y los de tareas) a todas las interfaces. `listening`,
-`speaking` y `executing` se usarán en las fases 2 y 4; la interfaz ya sabe animarlos.
+`/api/v1/ws/events` reenvía esos eventos (y los de tareas y descargas de voz) a todas las interfaces.
+`executing` se usará en la Fase 4.
 
 ## Persistencia
 

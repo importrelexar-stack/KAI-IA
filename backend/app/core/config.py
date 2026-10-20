@@ -61,6 +61,12 @@ class Settings(BaseSettings):
         return v
 
     @property
+    def effective_origins(self) -> list[str]:
+        """Orígenes permitidos + la propia interfaz servida por KAI Core en el puerto configurado."""
+        own = [f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}"]
+        return list(dict.fromkeys([*self.allowed_origins, *own]))
+
+    @property
     def database_url(self) -> str:
         return f"sqlite:///{(self.data_dir / 'kai.db').as_posix()}"
 

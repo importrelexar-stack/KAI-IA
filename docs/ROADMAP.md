@@ -6,12 +6,15 @@ Backend FastAPI, Claude API real con streaming, interfaz React, chat con histori
 configuración de clave y preferencias, estados del asistente en tiempo real, motor de tareas, CoworkBridge
 manual, seguridad base, scripts de Windows, pruebas y documentación.
 
-## Fase 2 — Voz
+## ✅ Fase 2 — Voz (esta versión)
 
-Implementar `voice/` (interfaces ya definidas): captura de micrófono en la interfaz (Web Audio /
-Tauri), STT y TTS intercambiables (local: whisper.cpp / Piper; nube), palabra de activación «Hey KAI»
-local con consentimiento explícito, detección de silencios, interrupción, selección de dispositivos,
-endpoints `/voice/transcribe` y `/voice/synthesize`, estados `listening` / `speaking`.
+Captura PCM con AudioWorklet, detección de voz con ruido adaptativo, Whisper local, Piper `es_AR`,
+alternativa del navegador, respuestas habladas breves, interrupción (botón, Esc y barge-in), manos libres
+«Hey KAI» con consentimiento, dictado en el chat, selección de dispositivos, descarga de modelos a pedido.
+
+Pendiente para más adelante: streaming de transcripción y de síntesis (menor latencia), detector de palabra
+de activación dedicado (más liviano que Whisper continuo), voz con la ventana minimizada (requiere la app
+de escritorio Tauri).
 
 ## Fase 3 — Memoria y agentes
 

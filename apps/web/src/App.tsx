@@ -12,12 +12,13 @@ import { CoworkPage } from "./pages/Cowork";
 import { SettingsPage } from "./pages/Settings";
 import { StatusPage } from "./pages/Status";
 import { AgentsPage } from "./pages/Agents";
+import { VoicePage } from "./pages/Voice";
 import { FuturePage } from "./components/ui";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "chat", label: "Chat", icon: MessageSquare },
-  { id: "voice", label: "Voz", icon: Mic, future: true },
+  { id: "voice", label: "Voz", icon: Mic },
   { id: "agents", label: "Agentes", icon: Bot },
   { id: "tasks", label: "Automatizaciones", icon: ListChecks },
   { id: "cowork", label: "Cowork", icon: Share2 },
@@ -39,8 +40,10 @@ function parseHash(): { route: Route; param: string | null } {
 export default function App() {
   const [{ route, param }, setLoc] = useState(parseHash);
   const [taskTick, setTaskTick] = useState(0);
+  const [voiceTick, setVoiceTick] = useState(0);
   const { state, detail, connected } = useAssistantState((e) => {
     if (e.type === "task") setTaskTick((t) => t + 1);
+    if (e.type === "voice_download") setVoiceTick((t) => t + 1);
   });
 
   useEffect(() => {
@@ -76,7 +79,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 1 (MVP)</div>
+        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 2 (voz)</div>
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
@@ -89,11 +92,7 @@ export default function App() {
           {route === "agents" && <AgentsPage />}
           {route === "settings" && <SettingsPage />}
           {route === "status" && <StatusPage />}
-          {route === "voice" && (
-            <FuturePage title="Voz" phase={2}
-              description="Conversación por micrófono con respuesta hablada en español de Argentina. La grabación nunca se activará sin tu consentimiento explícito."
-              items={["Activación con «Hey KAI»", "Speech-to-Text y Text-to-Speech (locales o en la nube)", "Detección de silencios, interrupción y cancelación", "Selección de micrófono y altavoces"]} />
-          )}
+          {route === "voice" && <VoicePage refreshKey={voiceTick} />}
           {route === "memory" && (
             <FuturePage title="Memoria" phase={3}
               description="Hoy KAI recuerda tus conversaciones (Historial). La memoria avanzada agregará preferencias, proyectos y contexto con búsqueda semántica, siempre consultable y eliminable."

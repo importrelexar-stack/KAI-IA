@@ -82,6 +82,12 @@ export interface Preferences {
   language: string;
   user_name: string;
   custom_instructions: string;
+  voice_stt_engine: "local" | "browser";
+  voice_tts_engine: "local" | "browser";
+  whisper_model: "tiny" | "base" | "small";
+  piper_voice: "es_AR-daniela-high" | "es_MX-claude-high" | "es_ES-davefx-medium";
+  voice_auto_speak: boolean;
+  voice_handsfree_consent: boolean;
 }
 
 export interface ApiKeyStatus {
@@ -191,13 +197,14 @@ export async function streamChat(
   conversationId: string | null,
   onEvent: (e: ChatEvent) => void,
   signal: AbortSignal,
+  channel: "text" | "voice" = "text",
 ): Promise<void> {
   let res: Response;
   try {
     res = await fetch(`${API}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, conversation_id: conversationId, stream: true }),
+      body: JSON.stringify({ message, conversation_id: conversationId, stream: true, channel }),
       signal,
     });
   } catch (e) {
@@ -220,4 +227,65 @@ export async function streamChat(
   } catch (e) {
     if ((e as Error).name !== "AbortError") throw e;
   }
+}
+
+// ---- Voz ----
+
+export interface VoiceEngine {
+  id: string;
+  kind: "stt" | "tts";
+  name: string;
+  installed: boolean;
+  model: string;
+  model_ready: boolean;
+  model_size_mb: number;
+  detail: string;
+}
+
+export interface VoiceStatus {
+  stt: VoiceEngine;
+  tts: VoiceEngine;
+  downloads: Record<string, { state: "downloading" | "done" | "error"; model: string; error?: string }>;
+  preferences: Pick<Preferences, "voice_stt_engine" | "voice_tts_engine" | "whisper_model" | "piper_voice" | "voice_auto_speak" | "voice_handsfree_consent" | "language">;
+  privacy: string;
+}
+
+export interface TranscriptOut {
+  text: string;
+  language: string;
+  duration_seconds: number;
+  engine: string;
+}
+
+export function transcribe(audio: Blob, language?: string, signal?: AbortSignal): Promise<TranscriptOut> {
+  const fd = new FormData();
+  fd.append("audio", audio, "voz.wav");
+  if (language) fd.append("language", language);
+  return api<TranscriptOut>("/voice/transcribe", { method: "POST", body: fd, signal });
+}
+
+export async function synthesize(text: string, signal?: AbortSignal): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetch(`${API}/voice/synthesize`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new ApiError(0, "offline", "No se pudo conectar con KAI Core.");
+  }
+  if (!res.ok) throw await parseError(res);
+  return res.blob();
+}
+
+/** Informa a KAI Core el estado de la interfaz de voz (el núcleo visual lo refleja). */
+export function reportVoiceState(state: "listening" | "speaking" | "idle") {
+  void fetch(`${API}/voice/state`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ state }),
+  }).catch(() => undefined);
 }

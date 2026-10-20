@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Plus, Send, Square } from "lucide-react";
+import { Copy, Loader2, Mic, Plus, Send, Square } from "lucide-react";
 import { Notice } from "../components/ui";
 import { useApi } from "../hooks/useApi";
-import { get, streamChat, type ConversationDetail, type ConversationSummary, type Message, type SystemStatus } from "../lib/api";
+import { get, reportVoiceState, streamChat, transcribe, type ConversationDetail, type ConversationSummary, type Message, type SystemStatus, type VoiceStatus } from "../lib/api";
+import { micErrorMessage } from "../lib/audio";
+import { MicCapture } from "../lib/mic";
+import { browserVoice } from "../lib/speech";
 import { navigate } from "../lib/nav";
 
 interface UiMessage extends Message {
@@ -21,6 +24,50 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
   const skipLoadRef = useRef<string | null>(null);
   const convs = useApi<ConversationSummary[]>("/conversations?limit=100");
   const status = useApi<SystemStatus>("/system/status");
+  const voice = useApi<VoiceStatus>("/voice/status");
+  const [dictating, setDictating] = useState<"off" | "listening" | "transcribing">("off");
+  const dictateRef = useRef<{ ctrl: AbortController; mic?: MicCapture } | null>(null);
+
+  async function dictate() {
+    if (dictateRef.current) { dictateRef.current.ctrl.abort(); return; }
+    const v = voice.data;
+    const local = v?.preferences.voice_stt_engine !== "browser";
+    if (local && !v?.stt.model_ready) { setError("Para dictar, descargá el modelo de reconocimiento en la pantalla Voz."); return; }
+    const ctrl = new AbortController();
+    const session: { ctrl: AbortController; mic?: MicCapture } = { ctrl };
+    dictateRef.current = session;
+    setError(null);
+    setDictating("listening");
+    reportVoiceState("listening");
+    try {
+      let text = "";
+      if (local) {
+        const mic = new MicCapture();
+        session.mic = mic;
+        try { await mic.open(); } catch (e) { throw new Error(micErrorMessage(e)); }
+        const blob = await mic.listenUtterance(ctrl.signal);
+        mic.close();
+        reportVoiceState("idle");
+        if (blob) {
+          setDictating("transcribing");
+          text = (await transcribe(blob, v?.preferences.language, ctrl.signal)).text;
+        }
+      } else {
+        text = await browserVoice.recognizeOnce(v?.preferences.language ?? "es-AR", ctrl.signal);
+      }
+      if (text.trim()) setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${text.trim()}` : text.trim()));
+      else if (!ctrl.signal.aborted) setError("No te escuché. Probá de nuevo.");
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setError((e as Error).message);
+    } finally {
+      session.mic?.close();
+      reportVoiceState("idle");
+      dictateRef.current = null;
+      setDictating("off");
+    }
+  }
+
+  useEffect(() => () => dictateRef.current?.ctrl.abort(), []);
 
   useEffect(() => {
     if (!conversationId) {
@@ -137,6 +184,11 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
                 }
               }}
             />
+            <button type="button" className={`btn h-[46px] ${dictating !== "off" ? "btn-danger" : ""}`} onClick={() => void dictate()}
+              disabled={busy || !!unavailable || dictating === "transcribing"} aria-label={dictating === "off" ? "Dictar por voz" : "Detener dictado"}
+              title={dictating === "listening" ? "Escuchando… (tocá para cancelar)" : "Dictar por voz"}>
+              {dictating === "transcribing" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+            </button>
             {busy ? (
               <button type="button" className="btn btn-danger h-[46px]" onClick={() => abortRef.current?.abort()} aria-label="Detener respuesta"><Square className="h-4 w-4" /></button>
             ) : (

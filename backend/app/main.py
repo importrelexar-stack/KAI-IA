@@ -87,8 +87,8 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
     app.add_exception_handler(KaiError, kai_error_handler)
     app.add_exception_handler(VoiceEngineError, _voice_error_handler)
     app.add_exception_handler(RequestValidationError, _validation_handler)  # type: ignore[arg-type]
-    app.add_middleware(AccessControlMiddleware, token=ctx.access_token, allowed_origins=settings.allowed_origins)
-    app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_credentials=False,
+    app.add_middleware(AccessControlMiddleware, token=ctx.access_token, allowed_origins=settings.effective_origins)
+    app.add_middleware(CORSMiddleware, allow_origins=settings.effective_origins, allow_credentials=False,
                        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
                        allow_headers=["Content-Type", "X-KAI-Token"])
 

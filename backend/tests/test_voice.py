@@ -165,6 +165,7 @@ def test_clean_for_speech():
         "Título. Texto con code y (te dejé el código en pantalla)"
     assert "https" not in clean_for_speech("mirá https://example.com/a?b=1")
     assert len(clean_for_speech("Hola. " * 2000, max_chars=100)) <= 100
+    assert clean_for_speech("usá _énfasis_ y KAI_DEMO_MODE") == "usá énfasis y KAI_DEMO_MODE"
     assert language_code("es-AR") == "es" and language_code("pt_BR") == "pt" and language_code("") == "es"
 
 

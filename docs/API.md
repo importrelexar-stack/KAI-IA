@@ -18,7 +18,7 @@ Clientes que no sean locales deben enviar `X-KAI-Token: <data/access_token>`.
 | GET | `/system/status` | Versión, base, proveedor, clave (sin revelar), consumo, presupuesto, funciones |
 | GET | `/agents` | Catálogo de agentes con su estado real (`active` / `planned`) |
 | GET | `/audit?limit=` | Registro de auditoría |
-| WS | `/ws/events` | Eventos `state`, `task`, `ping` |
+| WS | `/ws/events` | Eventos `state`, `task`, `voice_download`, `ping` |
 
 ## Chat e historial
 
@@ -93,7 +93,20 @@ Preferencias: `model`, `effort` (`low`…`max`), `max_tokens` (256–64000), `hi
 | GET | `/cowork/handoffs/{id}/files/{name}` | Descarga un archivo importado |
 | POST | `/cowork/handoffs/{id}/cancel` | Cancela |
 
-## Endpoints aún no expuestos
+## Voz
 
-`/voice/transcribe` y `/voice/synthesize` (Fase 2) no existen todavía: sólo se publicarán cuando haya un
-motor de voz real detrás.
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/voice/status` | Motores (instalado, modelo descargado, tamaño), descargas en curso y preferencias de voz |
+| POST | `/voice/models/{stt\|tts}/download` | Descarga el modelo en segundo plano (`202`); progreso por WebSocket `voice_download` |
+| POST | `/voice/transcribe` | Multipart `audio` (WAV/WebM/OGG/MP3, máx. 15 MB) + `language` opcional → `{text, language, duration_seconds, engine}` |
+| POST | `/voice/synthesize` | `{ text }` → `audio/wav`. El texto se limpia de Markdown/URLs antes de leerse |
+| POST | `/voice/state` | `{ state: "listening" \| "speaking" \| "idle" }`: la interfaz informa su estado para el núcleo visual |
+
+Errores: `503 voice_not_installed` / `voice_model_missing`, `422 invalid_audio` / `empty_audio`,
+`413 audio_too_large`, `429 rate_limited`.
+
+`POST /chat` acepta `channel: "voice"`: la respuesta se pide breve y sin Markdown para leerse en voz alta.
+
+Preferencias de voz (en `/settings`): `voice_stt_engine` y `voice_tts_engine` (`local` | `browser`),
+`whisper_model` (`tiny` | `base` | `small`), `piper_voice`, `voice_auto_speak`, `voice_handsfree_consent`.

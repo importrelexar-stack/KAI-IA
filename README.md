@@ -4,14 +4,17 @@ Asistente personal de escritorio para **Windows** (Android en camino), con Claud
 Arquitectura modular: interfaz React, núcleo local **KAI Core** (FastAPI + SQLite) y proveedores de IA
 intercambiables.
 
-> **Estado: Fase 1 (MVP) completada.** Chat real con Claude, historial persistente, configuración segura
-> de la clave, motor de tareas por estados, CoworkBridge manual, núcleo visual animado con estados reales,
-> scripts de instalación para Windows y pruebas automatizadas. Voz, agentes especializados, automatización
-> de Windows y Android son fases siguientes y la interfaz las muestra como **funciones futuras**.
+> **Estado: Fase 1 (MVP) y Fase 2 (voz) completadas.** Chat real con Claude, historial persistente,
+> configuración segura de la clave, motor de tareas, CoworkBridge manual, núcleo visual con estados reales,
+> **conversación por voz en español de Argentina** (reconocimiento y síntesis locales, «Hey KAI» con
+> consentimiento, interrupción, dictado), scripts de Windows y pruebas automatizadas. Memoria avanzada,
+> agentes especializados, automatización de Windows y Android son fases siguientes y la interfaz las
+> muestra como **funciones futuras**.
 
 ## Inicio rápido (Windows)
 
-Requisitos: **Python 3.11+**. Para compilar la interfaz: **Node.js LTS** (20.19+ / 22.12+).
+Requisitos: **Python 3.11+**. Node.js LTS es opcional: sin Node, el instalador descarga la interfaz ya
+compilada desde GitHub.
 
 ```powershell
 git clone <url-del-repo> KAI-IA
@@ -37,6 +40,19 @@ Después, en **Configuración**, cargá tu clave de API de Anthropic (o ponela e
 > **Importante:** una suscripción Claude **Pro o Max no incluye acceso a la API**. KAI necesita una clave de
 > [console.anthropic.com](https://console.anthropic.com) con facturación propia. Sin clave, KAI inicia
 > igual e indica que el chat real no está disponible.
+
+## Voz (Fase 2)
+
+- Pantalla **Voz**: tocás el núcleo o «Hablar», KAI detecta cuándo terminaste de hablar, transcribe,
+  responde con Claude (respuestas breves pensadas para escuchar) y las lee en voz alta.
+- **Motores locales** (sin conexión ni costo por uso): reconocimiento con **Whisper** (faster-whisper) y
+  voz con **Piper** `es_AR-daniela-high` (Argentina). Los modelos (~145 MB + ~110 MB) se descargan desde la
+  pantalla Voz sólo cuando lo decidís. Alternativa: voces y reconocimiento del navegador.
+- **Interrupción**: botón, tecla `Esc`, o simplemente hablar encima en modo manos libres.
+- **Manos libres «Hey KAI»**: requiere consentimiento explícito, reconocimiento local y la pantalla
+  abierta; muestra un indicador rojo; lo que no empieza con «Hey KAI» se descarta.
+- **Dictado** en el chat con el botón de micrófono.
+- Selección de micrófono y de salida de audio. El audio nunca se guarda.
 
 ## Qué hay en la Fase 1
 

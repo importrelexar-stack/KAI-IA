@@ -3,7 +3,7 @@
   "info": {
     "title": "KAI Core API",
     "description": "API local de KAI AI. Escucha sólo en 127.0.0.1 por defecto.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -1241,6 +1241,199 @@
           }
         }
       }
+    },
+    "/api/v1/voice/status": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Motores de voz, modelos y preferencias",
+        "operationId": "voice_status_api_v1_voice_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/voice/models/{kind}/download": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Descargar el modelo de voz (stt o tts)",
+        "operationId": "download_model_api_v1_voice_models__kind__download_post",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "stt",
+                "tts"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Download Model Api V1 Voice Models  Kind  Download Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/voice/transcribe": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Voz a texto (motor local)",
+        "operationId": "transcribe_api_v1_voice_transcribe_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transcribe_api_v1_voice_transcribe_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/voice/synthesize": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Texto a voz (WAV, motor local)",
+        "operationId": "synthesize_api_v1_voice_synthesize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynthesizeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "audio/wav": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/voice/state": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "La interfaz informa que está escuchando o hablando",
+        "operationId": "client_state_api_v1_voice_state_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientStateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Client State Api V1 Voice State Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1306,6 +1499,31 @@
         ],
         "title": "ApiKeyStatus"
       },
+      "Body_transcribe_api_v1_voice_transcribe_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio"
+        ],
+        "title": "Body_transcribe_api_v1_voice_transcribe_post"
+      },
       "Body_upload_file_api_v1_cowork_handoffs__handoff_id__files_post": {
         "properties": {
           "file": {
@@ -1344,6 +1562,15 @@
             "type": "boolean",
             "title": "Stream",
             "default": true
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "text",
+              "voice"
+            ],
+            "title": "Channel",
+            "default": "text"
           }
         },
         "type": "object",
@@ -1377,6 +1604,24 @@
           "assistant_message"
         ],
         "title": "ChatResponse"
+      },
+      "ClientStateIn": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "listening",
+              "speaking",
+              "idle"
+            ],
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "ClientStateIn"
       },
       "ConversationDetail": {
         "properties": {
@@ -1679,6 +1924,54 @@
         ],
         "title": "CoworkStatus"
       },
+      "EngineOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "installed": {
+            "type": "boolean",
+            "title": "Installed"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "model_ready": {
+            "type": "boolean",
+            "title": "Model Ready"
+          },
+          "model_size_mb": {
+            "type": "integer",
+            "title": "Model Size Mb"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "installed",
+          "model",
+          "model_ready",
+          "model_size_mb",
+          "detail"
+        ],
+        "title": "EngineOut"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1816,6 +2109,54 @@
             "maxLength": 4000,
             "title": "Custom Instructions",
             "default": ""
+          },
+          "voice_stt_engine": {
+            "type": "string",
+            "enum": [
+              "local",
+              "browser"
+            ],
+            "title": "Voice Stt Engine",
+            "default": "local"
+          },
+          "voice_tts_engine": {
+            "type": "string",
+            "enum": [
+              "local",
+              "browser"
+            ],
+            "title": "Voice Tts Engine",
+            "default": "local"
+          },
+          "whisper_model": {
+            "type": "string",
+            "enum": [
+              "tiny",
+              "base",
+              "small"
+            ],
+            "title": "Whisper Model",
+            "default": "base"
+          },
+          "piper_voice": {
+            "type": "string",
+            "enum": [
+              "es_AR-daniela-high",
+              "es_MX-claude-high",
+              "es_ES-davefx-medium"
+            ],
+            "title": "Piper Voice",
+            "default": "es_AR-daniela-high"
+          },
+          "voice_auto_speak": {
+            "type": "boolean",
+            "title": "Voice Auto Speak",
+            "default": true
+          },
+          "voice_handsfree_consent": {
+            "type": "boolean",
+            "title": "Voice Handsfree Consent",
+            "default": false
           }
         },
         "type": "object",
@@ -1937,6 +2278,90 @@
               }
             ],
             "title": "Custom Instructions"
+          },
+          "voice_stt_engine": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "local",
+                  "browser"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Stt Engine"
+          },
+          "voice_tts_engine": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "local",
+                  "browser"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Tts Engine"
+          },
+          "whisper_model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tiny",
+                  "base",
+                  "small"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whisper Model"
+          },
+          "piper_voice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "es_AR-daniela-high",
+                  "es_MX-claude-high",
+                  "es_ES-davefx-medium"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piper Voice"
+          },
+          "voice_auto_speak": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Auto Speak"
+          },
+          "voice_handsfree_consent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Handsfree Consent"
           }
         },
         "type": "object",
@@ -1989,6 +2414,33 @@
           "demo_mode"
         ],
         "title": "SettingsOut"
+      },
+      "SynthesizeIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "SynthesizeIn"
       },
       "TaskApproval": {
         "properties": {
@@ -2213,6 +2665,34 @@
         ],
         "title": "TaskTransition"
       },
+      "TranscriptOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "title": "Duration Seconds"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "language",
+          "duration_seconds",
+          "engine"
+        ],
+        "title": "TranscriptOut"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -2270,6 +2750,42 @@
           "message"
         ],
         "title": "ValidationOut"
+      },
+      "VoiceStatus": {
+        "properties": {
+          "stt": {
+            "$ref": "#/components/schemas/EngineOut"
+          },
+          "tts": {
+            "$ref": "#/components/schemas/EngineOut"
+          },
+          "downloads": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Downloads"
+          },
+          "preferences": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Preferences"
+          },
+          "privacy": {
+            "type": "string",
+            "title": "Privacy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stt",
+          "tts",
+          "downloads",
+          "preferences",
+          "privacy"
+        ],
+        "title": "VoiceStatus"
       }
     }
   }

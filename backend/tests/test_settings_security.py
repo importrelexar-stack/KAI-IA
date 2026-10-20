@@ -95,3 +95,10 @@ def test_config_parses_origins(make_settings):
     s = make_settings(KAI_ALLOWED_ORIGINS="http://a.test, http://b.test")
     assert s.allowed_origins == ["http://a.test", "http://b.test"]
     assert make_settings().host == "127.0.0.1"
+
+
+def test_own_port_origin_is_always_allowed(make_client):
+    with make_client(KAI_PORT=8899, KAI_ALLOWED_ORIGINS="http://otro.test") as c:
+        assert c.get("/api/v1/health", headers={"Origin": "http://127.0.0.1:8899"}).status_code == 200
+        assert c.get("/api/v1/health", headers={"Origin": "http://otro.test"}).status_code == 200
+        assert c.get("/api/v1/health", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403

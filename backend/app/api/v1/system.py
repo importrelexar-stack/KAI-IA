@@ -86,7 +86,7 @@ async def events(ws: WebSocket) -> None:
     ctx: AppContext = ws.app.state.ctx
     origin = ws.headers.get("origin")
     client_host = ws.client.host if ws.client else ""
-    if origin and origin not in ctx.settings.allowed_origins:
+    if origin and origin not in ctx.settings.effective_origins:
         await ws.close(code=1008)
         return
     if client_host not in LOCAL_HOSTS and not hmac.compare_digest(ws.query_params.get("token", ""), ctx.access_token):

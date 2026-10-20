@@ -83,7 +83,7 @@ _CODE_BLOCK = re.compile(r"```.*?```", re.S)
 _INLINE_CODE = re.compile(r"`([^`]*)`")
 _LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 _URL = re.compile(r"https?://\S+")
-_MARKS = re.compile(r"[*_#>|~]+")
+_MARKS = re.compile(r"[*#>|~]+|(?<!\w)_+|_+(?!\w)")
 _BULLET = re.compile(r"^[ \t]*(?:[-+•]|\d+[.)])[ \t]+", re.M)
 
 
