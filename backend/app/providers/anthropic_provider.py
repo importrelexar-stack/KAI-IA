@@ -145,7 +145,7 @@ class AnthropicProvider(AIProvider):
             results: list[dict[str, Any]] = []
             for call in calls:
                 outcome = await executor(ToolCall(id=call.id, name=call.name, input=call.input))
-                yield ToolActivity(name=call.name, summary=outcome.summary, ok=outcome.ok)
+                yield ToolActivity(name=call.name, summary=outcome.summary, ok=outcome.ok, task_id=outcome.task_id)
                 block: dict[str, Any] = {"type": "tool_result", "tool_use_id": call.id, "content": outcome.content}
                 if not outcome.ok:
                     block["is_error"] = True

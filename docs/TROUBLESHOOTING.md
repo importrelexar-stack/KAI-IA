@@ -29,4 +29,9 @@ Los registros están en `data\logs\kai.log` (aplicación) y `data\logs\server.er
 | «Por seguridad, KAI no guarda contraseñas…» | El texto parece una clave o tarjeta | Es intencional: no guardes secretos en la memoria. |
 | «Me detuve porque alcancé el límite de pasos» | Tarea compleja con muchas herramientas | Pedile que siga, o subí «Máximo de pasos» en Configuración. |
 | Estado del sistema muestra «fts5: false» | El SQLite de tu Python no trae FTS5 | La memoria funciona con búsqueda simple; actualizá Python desde python.org. |
+| «No hay carpetas autorizadas» | Todavía no autorizaste ninguna | Pantalla Archivos → Carpetas autorizadas. |
+| «La ruta está fuera de las carpetas autorizadas» | KAI intentó acceder a otra ubicación | Autorizá esa carpeta si corresponde. |
+| «Esa carpeta contiene o es una ubicación protegida» | Intentaste autorizar una carpeta del sistema, AppData o la de datos de KAI | Elegí una subcarpeta tuya (Documentos, Escritorio, un proyecto). |
+| «autorizada sólo para lectura» | La carpeta tiene modo lectura | Cambiá el modo a «Lectura y escritura» si querés que KAI modifique archivos ahí. |
+| La acción autorizada falló | Cambió algo desde que KAI la pidió (permisos, archivo movido) | Mirá el error en la tarjeta del chat o en Automatizaciones y pedile que lo intente de nuevo. |
 | Base de datos corrupta | Corte de energía durante escritura | Detené KAI, renombrá `data\kai.db` (se crea una nueva al iniciar). |

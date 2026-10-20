@@ -2,7 +2,7 @@
 
 El orquestador es Claude con tool use: decide qué herramientas usar. Los agentes
 Memory, Planner y Research son conjuntos de herramientas con límites de pasos,
-tiempo y tokens por solicitud. Code, Files y Automation llegan en fases posteriores.
+tiempo y tokens por solicitud. Files y Automation operan dentro de los permisos del usuario; Code llega más adelante.
 """
 
 from __future__ import annotations
@@ -45,8 +45,12 @@ def list_agents(prefs: Preferences) -> list[dict]:
                   "Busca información actual en la web (búsqueda web de Anthropic, con costo por búsqueda). "
                   "Se activa en Configuración.",
                   "active" if prefs.agents_enabled and prefs.web_search_enabled else "disabled", 3, ("web_search",)),
-        AgentInfo("code", "KAI Code", "Ayuda a programar, analizar y modificar proyectos.", "planned", 4),
-        AgentInfo("files", "KAI Files", "Organiza y procesa documentos y carpetas autorizadas.", "planned", 4),
-        AgentInfo("automation", "KAI Automation", "Gestiona automatizaciones autorizadas en Windows.", "planned", 4),
+        AgentInfo("files", "KAI Files",
+                  "Lista, busca, lee (texto, PDF, Word) y organiza archivos sólo dentro de las carpetas que autorizaste. "
+                  "Lo que modifica algo pide confirmación según los permisos.", on, 4, _tools("files")),
+        AgentInfo("automation", "KAI Automation",
+                  "Abre archivos y aplicaciones registradas y ejecuta scripts registrados, siempre con tu autorización.",
+                  on, 4, _tools("automation")),
+        AgentInfo("code", "KAI Code", "Ayuda a programar, analizar y modificar proyectos.", "planned", 6),
     )
     return [asdict(a) for a in agents]

@@ -1,5 +1,20 @@
 # Cambios
 
+## [0.4.0] — 2026-10-20 — Fase 4 (automatización de Windows)
+
+### Agregado
+- Permisos de automatización: carpetas autorizadas (lectura / lectura y escritura), aplicaciones y scripts
+  registrados, nivel por herramienta (permitir / preguntar / bloquear).
+- Agentes KAI Files y KAI Automation: listar, buscar, leer (texto, PDF, Word), crear carpetas y archivos,
+  mover, ordenar carpetas, enviar a la papelera, abrir archivos y apps, ejecutar scripts registrados.
+- Acciones con confirmación: tarjeta Autorizar/Rechazar en el chat, ejecución al aprobar con permisos
+  re-verificados, resultado en la conversación y en la tarea, auditoría.
+- Pantalla Archivos con explorador de lo que KAI puede ver.
+
+### Corregido
+- Voz: remuestreo con filtro antialiasing; prueba de integración real determinística y en verde.
+- CI: salida UTF-8 en Windows.
+
 ## [0.3.0] — 2026-10-20 — Fase 3 (memoria y agentes)
 
 ### Agregado

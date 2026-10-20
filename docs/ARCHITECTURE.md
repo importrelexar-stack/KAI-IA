@@ -48,6 +48,25 @@ Eventos SSE: `meta` (ids y título) → `delta`* → `done` | `error`.
 Para agregar otro proveedor: implementar `AIProvider` y registrarlo en `core/context.py`
 (`provider_factory`). KAI Core no conoce detalles de ningún proveedor fuera de esa interfaz.
 
+## Automatización (Fase 4)
+
+```
+Claude ─tool_use─► automation_tools.request
+                     ├─ nivel "deny"  → error
+                     ├─ lectura / "allow" → prepare (valida) → execute → resultado
+                     └─ "ask" → prepare (vista previa) → Task(awaiting_approval, action)
+Usuario ─Autorizar─► POST /tasks/{id}/approval → run_approved → execute (re-valida permisos)
+                     → Task completed/failed + mensaje en la conversación + auditoría
+```
+
+- `automation/permissions.py`: `Permissions` (carpetas, apps, scripts, niveles) y `PathGuard`, que
+  resuelve rutas (incluidos enlaces simbólicos), exige que estén dentro de una carpeta autorizada, respeta
+  sólo-lectura y bloquea carpetas del sistema, la carpeta de datos de KAI y nombres sensibles.
+- `automation/files.py`: operaciones (listar, buscar, leer texto/PDF/DOCX, crear, escribir con copia de
+  seguridad, mover sin sobrescribir, plan de orden, papelera con `send2trash`, abrir con `os.startfile`,
+  scripts con `subprocess` sin shell y con tiempo máximo).
+- `agents/automation_tools.py`: integra todo con el orquestador y el motor de tareas.
+
 ## Memoria y agentes (Fase 3)
 
 ```

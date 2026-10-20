@@ -46,5 +46,6 @@ class TaskOut(BaseModel):
     project_id: str | None = None
     depends_on: list[str] = []
     created_by: str = "user"
+    action: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime

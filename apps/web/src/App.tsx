@@ -14,7 +14,7 @@ import { StatusPage } from "./pages/Status";
 import { AgentsPage } from "./pages/Agents";
 import { VoicePage } from "./pages/Voice";
 import { MemoryPage } from "./pages/Memory";
-import { FuturePage } from "./components/ui";
+import { FilesPage } from "./pages/Files";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -24,7 +24,7 @@ const NAV = [
   { id: "tasks", label: "Automatizaciones", icon: ListChecks },
   { id: "cowork", label: "Cowork", icon: Share2 },
   { id: "memory", label: "Memoria", icon: Brain },
-  { id: "files", label: "Archivos", icon: FolderOpen, future: true },
+  { id: "files", label: "Archivos", icon: FolderOpen },
   { id: "history", label: "Historial", icon: History },
   { id: "settings", label: "Configuración", icon: Settings },
   { id: "status", label: "Estado del sistema", icon: Activity },
@@ -82,7 +82,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 3 (memoria y agentes)</div>
+        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 4 (automatización)</div>
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
@@ -97,11 +97,7 @@ export default function App() {
           {route === "status" && <StatusPage />}
           {route === "voice" && <VoicePage refreshKey={voiceTick} />}
           {route === "memory" && <MemoryPage refreshKey={memoryTick} />}
-          {route === "files" && (
-            <FuturePage title="Archivos" phase={4}
-              description="Acceso a carpetas autorizadas para leer, buscar y organizar documentos, con confirmación para cualquier acción sensible."
-              items={["Lista de carpetas permitidas", "Lectura de PDF y documentos", "Organización con vista previa y confirmación", "Registro de auditoría de cada operación"]} />
-          )}
+          {route === "files" && <FilesPage />}
         </div>
       </main>
     </div>

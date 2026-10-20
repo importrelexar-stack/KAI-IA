@@ -93,6 +93,8 @@ class Task(Base):
     project_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     depends_on: Mapped[list[str]] = mapped_column(JSON, default=list)
     created_by: Mapped[str] = mapped_column(String(16), default="user")  # user | kai
+    # Acción ejecutable al autorizarse (Fase 4): {tool, args, conversation_id}
+    action: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

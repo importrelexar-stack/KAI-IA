@@ -65,6 +65,7 @@ export interface ToolEvent {
   name: string;
   summary: string;
   ok: boolean;
+  task_id?: string;
 }
 
 export interface ConversationSummary {
@@ -149,6 +150,7 @@ export interface Task {
   project_id: string | null;
   depends_on: string[];
   created_by: "user" | "kai";
+  action?: { tool: string; args: Record<string, unknown>; conversation_id: string | null } | null;
   created_at: string;
   updated_at: string;
 }
@@ -346,4 +348,23 @@ export function reportVoiceState(state: "listening" | "speaking" | "idle") {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ state }),
   }).catch(() => undefined);
+}
+
+// ---- Automatización (Fase 4) ----
+
+export type Level = "allow" | "ask" | "deny";
+
+export interface AutomationPermissions {
+  folders: { path: string; mode: "read" | "read_write" }[];
+  apps: { name: string; command: string; resolved?: string | null; available?: boolean }[];
+  scripts: { name: string; path: string; timeout_seconds: number }[];
+  levels: Record<string, Level>;
+  default_levels: Record<string, Level>;
+  always_ask: string[];
+}
+
+export interface BrowseResult {
+  path: string;
+  root: string;
+  items: { nombre: string; tipo: "carpeta" | "archivo"; tamano: string | null; modificado: string }[];
 }

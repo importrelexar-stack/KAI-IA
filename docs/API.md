@@ -119,6 +119,21 @@ incluye `tool_events`. WebSocket: eventos `memory` y `project`.
 Preferencias nuevas: `memory_enabled`, `memory_auto_approve`, `agents_enabled`, `web_search_enabled`,
 `max_tool_iterations` (1–15).
 
+## Automatización (Fase 4)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/automation/permissions` | Carpetas, aplicaciones (con disponibilidad), scripts y nivel de cada herramienta |
+| PUT | `/automation/permissions` | `{ folders: [{path, mode: read\|read_write}], apps: [{name, command}], scripts: [{name, path, timeout_seconds}], levels: {herramienta: allow\|ask\|deny} }` — valida rutas; rechaza unidades completas, la carpeta de usuario entera, carpetas del sistema y la de datos de KAI |
+| GET | `/automation/browse?path=` | Lista una carpeta autorizada |
+
+Herramientas del orquestador: `listar_carpeta`, `buscar_archivos`, `leer_archivo`, `crear_carpeta`,
+`escribir_archivo`, `mover_archivo`, `organizar_carpeta`, `enviar_a_papelera`, `abrir`, `ejecutar_script`.
+Cuando una acción queda pendiente, el evento `tool` del chat incluye `task_id`; la tarea queda en
+`awaiting_approval` con `action` y una vista previa en `description`. `POST /tasks/{id}/approval` con
+`approve: true` la ejecuta (verificando permisos otra vez), la deja `completed`/`failed` con el resultado
+y agrega el resultado a la conversación.
+
 ## Voz
 
 | Método | Ruta | Descripción |

@@ -114,7 +114,8 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
                                     use_fallbacks=prefs.use_fallbacks, max_tool_iterations=prefs.max_tool_iterations,
                                     web_search=prefs.agents_enabled and prefs.web_search_enabled)
         tool_ctx = ToolContext(db=db, memory=memory, conversation_id=conv.id,
-                               auto_approve_memory=prefs.memory_auto_approve, publish=ctx.bus.publish)
+                               auto_approve_memory=prefs.memory_auto_approve, publish=ctx.bus.publish,
+                               protected=[ctx.settings.data_dir])
 
         async def execute(call: ToolCall) -> ToolResult:
             ctx.state.begin(AssistantState.EXECUTING, f"Usando {call.name}")
@@ -123,7 +124,8 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
             finally:
                 ctx.state.end()
             audit(db, "agent.tool", target=call.name, details={"ok": outcome.ok, "summary": outcome.summary[:200]})
-            return ToolResult(content=outcome.content, summary=outcome.summary, ok=outcome.ok)
+            return ToolResult(content=outcome.content, summary=outcome.summary, ok=outcome.ok,
+                              task_id=outcome.task_id)
 
         tools_on = prefs.agents_enabled
         chunks: list[str] = []
@@ -140,6 +142,8 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
                     yield {"type": "delta", "text": ev.text}
                 elif isinstance(ev, ToolActivity):
                     item = {"name": ev.name, "summary": ev.summary, "ok": ev.ok}
+                    if ev.task_id:
+                        item["task_id"] = ev.task_id
                     tool_events.append(item)
                     yield {"type": "tool", **item}
                 elif isinstance(ev, Completed):

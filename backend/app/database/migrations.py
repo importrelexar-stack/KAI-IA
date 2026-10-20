@@ -20,6 +20,7 @@ COLUMNS: list[tuple[str, str, str]] = [
     ("tasks", "project_id", "VARCHAR(32)"),
     ("tasks", "depends_on", "JSON DEFAULT '[]'"),
     ("tasks", "created_by", "VARCHAR(16) DEFAULT 'user'"),
+    ("tasks", "action", "JSON"),
 ]
 
 FTS_DDL = (

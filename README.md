@@ -4,13 +4,13 @@ Asistente personal de escritorio para **Windows** (Android en camino), con Claud
 Arquitectura modular: interfaz React, núcleo local **KAI Core** (FastAPI + SQLite) y proveedores de IA
 intercambiables.
 
-> **Estado: Fases 1 (MVP), 2 (voz) y 3 (memoria y agentes) completadas.** Chat real con Claude, historial persistente,
+> **Estado: Fases 1 (MVP), 2 (voz), 3 (memoria y agentes) y 4 (automatización de Windows) completadas.** Chat real con Claude, historial persistente,
 > configuración segura de la clave, motor de tareas, CoworkBridge manual, núcleo visual con estados reales,
 > **conversación por voz en español de Argentina** (reconocimiento y síntesis locales, «Hey KAI» con
 > consentimiento, interrupción, dictado), **memoria persistente y proyectos**, **orquestador con agentes**
-> (memoria, planificación, búsqueda web opcional), scripts de Windows y pruebas automatizadas.
-> Automatización de Windows (archivos, apps) y Android son fases siguientes y la interfaz las muestra
-> como **funciones futuras**.
+> (memoria, planificación, búsqueda web opcional), **archivos y aplicaciones con permisos y confirmación**,
+> scripts de Windows y pruebas automatizadas. La app de escritorio (Tauri) y Android son las fases
+> siguientes.
 
 ## Inicio rápido (Windows)
 
@@ -41,6 +41,19 @@ Después, en **Configuración**, cargá tu clave de API de Anthropic (o ponela e
 > **Importante:** una suscripción Claude **Pro o Max no incluye acceso a la API**. KAI necesita una clave de
 > [console.anthropic.com](https://console.anthropic.com) con facturación propia. Sin clave, KAI inicia
 > igual e indica que el chat real no está disponible.
+
+## Automatización de Windows (Fase 4)
+
+- Pantalla **Archivos**: autorizás carpetas (sólo lectura o lectura y escritura), aplicaciones y scripts.
+  Un explorador muestra exactamente lo que KAI puede ver.
+- KAI puede **listar, buscar (por nombre o contenido) y leer** archivos de texto, PDF y Word; **crear
+  carpetas y archivos de texto, mover, ordenar carpetas** por tipo o fecha, **enviar a la papelera**,
+  **abrir** archivos y aplicaciones registradas y **ejecutar scripts registrados**.
+- Cada acción tiene un nivel configurable (permitir / preguntar / bloquear). Las que modifican algo
+  piden confirmación por defecto: aparecen en el chat con **Autorizar / Rechazar** y una vista previa, y
+  los permisos se vuelven a verificar al ejecutar. Papelera y scripts siempre preguntan.
+- Nunca: borrado definitivo, sobrescritura sin copia de seguridad, comandos libres, carpetas del sistema,
+  datos de KAI ni archivos de credenciales. Todo queda en la auditoría.
 
 ## Memoria y agentes (Fase 3)
 

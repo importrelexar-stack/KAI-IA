@@ -45,6 +45,7 @@ class ToolResult:
     content: str
     summary: str
     ok: bool = True
+    task_id: str | None = None
 
 
 ToolExecutor = Callable[[ToolCall], Awaitable[ToolResult]]
@@ -77,6 +78,7 @@ class ToolActivity:
     name: str
     summary: str
     ok: bool
+    task_id: str | None = None
     type: Literal["tool"] = "tool"
 
 

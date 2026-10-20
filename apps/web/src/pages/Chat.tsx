@@ -7,6 +7,7 @@ import { useApi } from "../hooks/useApi";
 import { get, reportVoiceState, streamChat, transcribe, type ConversationDetail, type ConversationSummary, type Message, type SystemStatus, type VoiceStatus } from "../lib/api";
 import { micErrorMessage } from "../lib/audio";
 import { MicCapture } from "../lib/mic";
+import { PendingAction } from "../components/PendingAction";
 import { browserVoice } from "../lib/speech";
 import { navigate } from "../lib/nav";
 
@@ -111,7 +112,7 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
         } else if (ev.type === "delta") {
           setMessages((m) => m.map((x) => (x.id === `${tempId}-a` ? { ...x, content: x.content + ev.text } : x)));
         } else if (ev.type === "tool") {
-          const item = { name: ev.name, summary: ev.summary, ok: ev.ok };
+          const item = { name: ev.name, summary: ev.summary, ok: ev.ok, task_id: ev.task_id };
           setMessages((m) => m.map((x) => (x.id === `${tempId}-a` ? { ...x, tool_events: [...(x.tool_events ?? []), item] } : x)));
         } else if (ev.type === "done") {
           setMessages((m) => m.map((x) => (x.id === `${tempId}-a` ? ev.assistant_message : x)));
@@ -218,6 +219,7 @@ function Bubble({ m, streaming }: { m: UiMessage; streaming: boolean }) {
             ))}
           </ul>
         )}
+        {!isUser && m.tool_events?.filter((t) => t.task_id).map((t) => <PendingAction key={t.task_id} taskId={t.task_id!} />)}
         {isUser ? (
           <p className="whitespace-pre-wrap">{m.content}</p>
         ) : m.content ? (

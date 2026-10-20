@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api.v1 import chat, cowork, memory, settings as settings_api, system, tasks, voice
+from app.api.v1 import automation, chat, cowork, memory, settings as settings_api, system, tasks, voice
 from app.core.config import Settings, get_settings
 from app.core.context import AppContext, ProviderFactory, default_provider_factory
 from app.core.errors import KaiError, kai_error_handler
@@ -92,7 +92,8 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
                        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
                        allow_headers=["Content-Type", "X-KAI-Token"])
 
-    for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router, voice.router, memory.router):
+    for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router, voice.router, memory.router,
+              automation.router):
         app.include_router(r, prefix="/api/v1")
 
     _mount_frontend(app, settings.web_dist)

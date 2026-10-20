@@ -56,7 +56,7 @@ class FakeProvider(AIProvider):
             assert executor is not None, "las herramientas están desactivadas"
             result = await executor(ToolCall(id=f"call_{i}", name=name, input=args))
             self.tool_results.append(result)
-            yield ToolActivity(name=name, summary=result.summary, ok=result.ok)
+            yield ToolActivity(name=name, summary=result.summary, ok=result.ok, task_id=result.task_id)
         for part in self.reply.split(" "):
             yield TextDelta(text=part + " ")
         yield Completed(model=options.model, stop_reason=self.stop_reason,

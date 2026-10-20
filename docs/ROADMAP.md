@@ -25,11 +25,17 @@ opcional); tareas con dependencias; límites de pasos, tokens y tiempo; migracio
 Pendiente: búsqueda semántica con embeddings locales (la interfaz está preparada), agente Code (pasa a la
 Fase 4 junto con el acceso a archivos).
 
-## Fase 4 — Automatización Windows
+## ✅ Fase 4 — Automatización Windows (esta versión)
 
-Herramientas con permisos individuales (carpetas permitidas, apertura de aplicaciones, búsqueda local,
-lectura de PDF, organización de carpetas, scripts en lista blanca), ejecución desde el motor de tareas,
-confirmaciones y auditoría detallada. Empaquetado Tauri 2 con KAI Core como sidecar e instalador.
+Carpetas autorizadas con modo lectura/escritura, búsqueda y lectura (texto, PDF, Word), creación,
+escritura con copia de seguridad, movimiento sin sobrescritura, orden de carpetas con vista previa,
+papelera, apertura de archivos y apps registradas, scripts registrados con tiempo máximo, niveles por
+herramienta, confirmación desde el chat y auditoría.
+
+## Fase 4b — App de escritorio
+
+Empaquetado Tauri 2 con KAI Core como sidecar (PyInstaller), instalador MSI/NSIS, ícono en la bandeja,
+atajo global y voz con la ventana minimizada. Lectura de planillas Excel.
 
 ## Fase 5 — Android
 

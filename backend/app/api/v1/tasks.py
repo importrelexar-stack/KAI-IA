@@ -7,7 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import client_id, get_ctx, get_db
+from app.agents.automation_tools import run_approved
 from app.automation import tasks as engine
+from app.core.state import AssistantState
 from app.core.context import AppContext
 from app.models.entities import Task
 from app.schemas.tasks import TaskApproval, TaskCreate, TaskOut, TaskStatusLiteral, TaskTransition
@@ -57,9 +59,21 @@ def transition_task(task_id: str, body: TaskTransition, request: Request, ctx: C
     return task
 
 
-@router.post("/tasks/{task_id}/approval", response_model=TaskOut, summary="Aprobar o rechazar una tarea")
+@router.post("/tasks/{task_id}/approval", response_model=TaskOut,
+             summary="Aprobar o rechazar una tarea (si tiene una acción, se ejecuta al aprobarla)")
 def approve_task(task_id: str, body: TaskApproval, request: Request, ctx: Ctx, db: Db) -> Task:
     task = engine.decide_approval(db, task_id, approve=body.approve, by=client_id(request), note=body.note)
     audit(db, "task.approval", target=task_id, details={"approve": body.approve}, client=client_id(request))
+    if body.approve and task.action:
+        ctx.state.begin(AssistantState.EXECUTING, f"Ejecutando: {task.title[:60]}")
+        try:
+            task = run_approved(db, task, [ctx.settings.data_dir])
+        finally:
+            ctx.state.end()
+        audit(db, "automation.execute", target=task_id,
+              details={"tool": task.action.get("tool"), "status": task.status,
+                       "args": {k: (v if len(str(v)) < 300 else f"{str(v)[:300]}…") for k, v in
+                                (task.action.get("args") or {}).items()}},
+              client=client_id(request))
     _publish(ctx, task)
     return task
