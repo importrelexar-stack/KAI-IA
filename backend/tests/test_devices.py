@@ -39,7 +39,8 @@ def _png() -> bytes:
 def test_private_address_rules():
     for ip in ("192.168.0.2", "10.1.2.3", "172.16.5.4", "100.101.102.103", "fd7a:115c:a1e0::1", "127.0.0.1"):
         assert dev.is_private_address(ip), ip
-    for ip in ("8.8.8.8", "1.1.1.1", "169.254.1.1", "2001:4860::8888", "0.0.0.0", "no-es-ip"):
+    for ip in ("8.8.8.8", "1.1.1.1", "169.254.1.1", "2001:4860::8888", "0.0.0.0", "192.0.2.2", "198.18.0.1",
+               "no-es-ip"):
         assert not dev.is_private_address(ip), ip
     assert dev.host_header_allowed_remote("mi-pc.tailnet.ts.net")
     assert not dev.host_header_allowed_remote("evil.example")

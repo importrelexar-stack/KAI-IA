@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Activity, Bot, FolderOpen, History, LayoutDashboard, ListChecks, Brain, MessageSquare, Mic, Settings, Share2,
+  Activity, Bot, FolderOpen, History, LayoutDashboard, ListChecks, Brain, MessageSquare, Mic, Settings, Share2, Smartphone,
 } from "lucide-react";
 import { useAssistantState } from "./hooks/useAssistantState";
 import { KaiCore, STATE_LABEL } from "./components/KaiCore";
@@ -15,6 +15,7 @@ import { AgentsPage } from "./pages/Agents";
 import { VoicePage } from "./pages/Voice";
 import { MemoryPage } from "./pages/Memory";
 import { FilesPage } from "./pages/Files";
+import { DevicesPage } from "./pages/Devices";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -25,6 +26,7 @@ const NAV = [
   { id: "cowork", label: "Cowork", icon: Share2 },
   { id: "memory", label: "Memoria", icon: Brain },
   { id: "files", label: "Archivos", icon: FolderOpen },
+  { id: "devices", label: "Dispositivos", icon: Smartphone },
   { id: "history", label: "Historial", icon: History },
   { id: "settings", label: "Configuración", icon: Settings },
   { id: "status", label: "Estado del sistema", icon: Activity },
@@ -82,7 +84,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 4 (automatización)</div>
+        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 5 (Android)</div>
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
@@ -98,6 +100,7 @@ export default function App() {
           {route === "voice" && <VoicePage refreshKey={voiceTick} />}
           {route === "memory" && <MemoryPage refreshKey={memoryTick} />}
           {route === "files" && <FilesPage />}
+          {route === "devices" && <DevicesPage />}
         </div>
       </main>
     </div>

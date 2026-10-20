@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Loader2, Mic, Plus, Send, Square, Wrench } from "lucide-react";
+import { Copy, FileText, Image as ImageIcon, Loader2, Mic, Paperclip, Plus, Send, Square, Wrench, X } from "lucide-react";
 import { Notice } from "../components/ui";
 import { useApi } from "../hooks/useApi";
-import { get, reportVoiceState, streamChat, transcribe, type ConversationDetail, type ConversationSummary, type Message, type SystemStatus, type VoiceStatus } from "../lib/api";
+import { get, reportVoiceState, streamChat, transcribe, uploadAttachment, type AttachmentOut, type ConversationDetail, type ConversationSummary, type Message, type SystemStatus, type VoiceStatus } from "../lib/api";
 import { micErrorMessage } from "../lib/audio";
 import { MicCapture } from "../lib/mic";
 import { PendingAction } from "../components/PendingAction";
 import { browserVoice } from "../lib/speech";
 import { navigate } from "../lib/nav";
+
+const MAX_ATTACHMENTS = 5;
+const ACCEPT = "image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv,.json,.log,.xml,.html,.py,.js,.ts";
+
+function AttachmentIcon({ kind }: { kind: string }) {
+  return kind === "image" ? <ImageIcon className="h-3 w-3" aria-hidden /> : <FileText className="h-3 w-3" aria-hidden />;
+}
 
 interface UiMessage extends Message {
   pending?: boolean;
@@ -18,6 +25,9 @@ interface UiMessage extends Message {
 export function ChatPage({ conversationId }: { conversationId: string | null }) {
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<AttachmentOut[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -87,16 +97,36 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  async function attach(files: FileList | null) {
+    if (!files) return;
+    const list = Array.from(files).slice(0, Math.max(0, MAX_ATTACHMENTS - attachments.length));
+    if (files.length > list.length) setError(`Podés adjuntar hasta ${MAX_ATTACHMENTS} archivos por mensaje.`);
+    for (const f of list) {
+      setUploading((n) => n + 1);
+      try {
+        const att = await uploadAttachment(f);
+        setAttachments((a) => [...a, att]);
+      } catch (e) {
+        setError(`${f.name}: ${(e as Error).message}`);
+      } finally {
+        setUploading((n) => n - 1);
+      }
+    }
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
   async function send() {
     const text = input.trim();
-    if (!text || busy) return;
+    const sent = attachments;
+    if ((!text && !sent.length) || busy || uploading) return;
     setInput("");
+    setAttachments([]);
     setError(null);
     setBusy(true);
     const tempId = `tmp-${Date.now()}`;
     setMessages((m) => [
       ...m,
-      { id: `${tempId}-u`, role: "user", content: text, created_at: new Date().toISOString(), pending: true },
+      { id: `${tempId}-u`, role: "user", content: text, attachments: sent, created_at: new Date().toISOString(), pending: true },
       { id: `${tempId}-a`, role: "assistant", content: "", created_at: new Date().toISOString(), pending: true },
     ]);
     const ctrl = new AbortController();
@@ -121,7 +151,7 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
           setError(ev.message);
           setMessages((m) => m.filter((x) => x.id !== `${tempId}-a`));
         }
-      }, ctrl.signal);
+      }, ctrl.signal, "text", sent.map((a) => a.id));
       if (ctrl.signal.aborted) {
         setMessages((m) => m.map((x) => (x.id === `${tempId}-a` ? { ...x, pending: false, stop_reason: "cancelled" } : x)));
       }
@@ -129,6 +159,7 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
       setError((e as Error).message);
       setMessages((m) => m.filter((x) => !x.id.startsWith(tempId)));
       setInput(text);
+      setAttachments(sent);
     } finally {
       setBusy(false);
       abortRef.current = null;
@@ -170,8 +201,23 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
           </div>
         </div>
 
-        <form className="border-t border-line p-4" onSubmit={(e) => { e.preventDefault(); void send(); }}>
+        <form className="border-t border-line p-4" onSubmit={(e) => { e.preventDefault(); void send(); }}
+          onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void attach(e.dataTransfer.files); }}>
+          {(attachments.length > 0 || uploading > 0) && (
+            <ul className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-2" aria-label="Archivos adjuntos">
+              {attachments.map((a) => (
+                <li key={a.id} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2 py-1 text-xs">
+                  <AttachmentIcon kind={a.kind} />{a.name}
+                  <button type="button" onClick={() => setAttachments((x) => x.filter((y) => y.id !== a.id))} aria-label={`Quitar ${a.name}`} className="text-muted hover:text-ink"><X className="h-3 w-3" /></button>
+                </li>
+              ))}
+              {uploading > 0 && <li className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-muted"><Loader2 className="h-3 w-3 animate-spin" />Subiendo…</li>}
+            </ul>
+          )}
           <div className="mx-auto flex max-w-3xl items-end gap-2">
+            <input ref={fileRef} type="file" multiple className="hidden" accept={ACCEPT} onChange={(e) => void attach(e.target.files)} />
+            <button type="button" className="btn h-[46px]" onClick={() => fileRef.current?.click()} disabled={busy || !!unavailable || attachments.length >= MAX_ATTACHMENTS}
+              aria-label="Adjuntar archivo" title="Adjuntar documento o imagen (también podés arrastrarlo)"><Paperclip className="h-4 w-4" /></button>
             <label htmlFor="chat-input" className="sr-only">Mensaje</label>
             <textarea
               id="chat-input"
@@ -196,7 +242,7 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
             {busy ? (
               <button type="button" className="btn btn-danger h-[46px]" onClick={() => abortRef.current?.abort()} aria-label="Detener respuesta"><Square className="h-4 w-4" /></button>
             ) : (
-              <button type="submit" className="btn btn-primary h-[46px]" disabled={!input.trim() || !!unavailable} aria-label="Enviar"><Send className="h-4 w-4" /></button>
+              <button type="submit" className="btn btn-primary h-[46px]" disabled={(!input.trim() && !attachments.length) || uploading > 0 || !!unavailable} aria-label="Enviar"><Send className="h-4 w-4" /></button>
             )}
           </div>
         </form>
@@ -220,8 +266,15 @@ function Bubble({ m, streaming }: { m: UiMessage; streaming: boolean }) {
           </ul>
         )}
         {!isUser && m.tool_events?.filter((t) => t.task_id).map((t) => <PendingAction key={t.task_id} taskId={t.task_id!} />)}
+        {isUser && m.attachments && m.attachments.length > 0 && (
+          <ul className="mb-1.5 flex flex-wrap gap-1.5" aria-label="Adjuntos">
+            {m.attachments.map((a) => (
+              <li key={a.id} className="inline-flex items-center gap-1 rounded-md bg-black/20 px-2 py-0.5 text-xs"><AttachmentIcon kind={a.kind} />{a.name}</li>
+            ))}
+          </ul>
+        )}
         {isUser ? (
-          <p className="whitespace-pre-wrap">{m.content}</p>
+          m.content && <p className="whitespace-pre-wrap">{m.content}</p>
         ) : m.content ? (
           <div className="prose-kai"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>
         ) : (

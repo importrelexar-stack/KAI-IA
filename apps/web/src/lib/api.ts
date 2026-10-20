@@ -58,7 +58,26 @@ export interface Message {
   input_tokens?: number;
   output_tokens?: number;
   tool_events?: ToolEvent[] | null;
+  attachments?: AttachmentRef[] | null;
   created_at: string;
+}
+
+export interface AttachmentRef {
+  id: string;
+  name: string;
+  kind: "document" | "image";
+  size: number;
+}
+
+export interface AttachmentOut extends AttachmentRef {
+  media_type: string;
+  chars: number;
+}
+
+export function uploadAttachment(file: File): Promise<AttachmentOut> {
+  const fd = new FormData();
+  fd.append("file", file, file.name);
+  return api<AttachmentOut>("/chat/attachments", { method: "POST", body: fd });
 }
 
 export interface ToolEvent {
@@ -258,13 +277,14 @@ export async function streamChat(
   onEvent: (e: ChatEvent) => void,
   signal: AbortSignal,
   channel: "text" | "voice" = "text",
+  attachmentIds: string[] = [],
 ): Promise<void> {
   let res: Response;
   try {
     res = await fetch(`${API}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, conversation_id: conversationId, stream: true, channel }),
+      body: JSON.stringify({ message, conversation_id: conversationId, stream: true, channel, attachment_ids: attachmentIds }),
       signal,
     });
   } catch (e) {
@@ -368,3 +388,39 @@ export interface BrowseResult {
   root: string;
   items: { nombre: string; tipo: "carpeta" | "archivo"; tamano: string | null; modificado: string }[];
 }
+
+// ---- Dispositivos (Fase 5) ----
+
+export interface RemoteStatus {
+  enabled: boolean;
+  listening_on_network: boolean;
+  restart_required: boolean;
+  port: number;
+  addresses: string[];
+}
+
+export interface PairingOut extends RemoteStatus {
+  code: string;
+  expires_at: string;
+  urls: string[];
+  payload: string;
+  qr_svg: string;
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  platform: string;
+  revoked: boolean;
+  last_seen_at: string | null;
+  last_ip: string | null;
+  created_at: string;
+}
+
+export const devicesApi = {
+  remote: () => api<RemoteStatus>("/devices/remote"),
+  setRemote: (enabled: boolean) => api<RemoteStatus>("/devices/remote", { method: "PUT", body: JSON.stringify({ enabled }) }),
+  pairing: () => api<PairingOut>("/devices/pairing", { method: "POST" }),
+  list: () => api<Device[]>("/devices"),
+  revoke: (id: string) => api<Device>(`/devices/${id}`, { method: "DELETE" }),
+};

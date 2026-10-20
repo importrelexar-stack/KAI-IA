@@ -29,6 +29,9 @@ TOKEN_PREFIX = "kaid_"
 _ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # sin 0/O, 1/I/L
 _REMOTE_KEY = "remote_access"
 _CGNAT = ipaddress.ip_network("100.64.0.0/10")  # Tailscale
+# Lista explícita: `ip.is_private` de Python también incluye redes de documentación y de pruebas.
+_PRIVATE_NETS = [ipaddress.ip_network(n) for n in (
+    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "fc00::/7")]
 
 
 def _hash(value: str) -> str:
@@ -50,9 +53,7 @@ def is_private_address(host: str) -> bool:
         ip = ip.ipv4_mapped
     if ip.is_loopback:
         return True
-    if isinstance(ip, ipaddress.IPv4Address) and ip in _CGNAT:
-        return True
-    return ip.is_private and not ip.is_link_local and not ip.is_unspecified
+    return any(ip.version == net.version and ip in net for net in _PRIVATE_NETS)
 
 
 def host_header_allowed_remote(host: str) -> bool:
