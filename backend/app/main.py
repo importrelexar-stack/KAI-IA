@@ -64,7 +64,8 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
         chat_limiter=RateLimiter(settings.chat_rate_limit_per_minute),
         provider_factory=provider_factory or default_provider_factory,
     )
-    ctx.mcp = McpManager(ctx.secrets, settings.logs_dir)
+    ctx.mcp = McpManager(ctx.secrets, settings.logs_dir,
+                         oauth_redirect_uri=f"http://127.0.0.1:{settings.port}/api/v1/integrations/oauth/callback")
 
     def load_mcp_configs_safe() -> list:
         with db.SessionLocal() as s:

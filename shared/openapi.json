@@ -2826,6 +2826,94 @@
         }
       }
     },
+    "/api/v1/integrations/mcp/{server_id}/oauth": {
+      "delete": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "Cerrar la sesión OAuth (borra los tokens y pide iniciar sesión de nuevo)",
+        "operationId": "oauth_logout_api_v1_integrations_mcp__server_id__oauth_delete",
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Oauth Logout Api V1 Integrations Mcp  Server Id  Oauth Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/mcp/{server_id}/oauth/open": {
+      "post": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "Abrir el inicio de sesión en el navegador predeterminado de la PC",
+        "operationId": "oauth_open_api_v1_integrations_mcp__server_id__oauth_open_post",
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Oauth Open Api V1 Integrations Mcp  Server Id  Oauth Open Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/routines": {
       "get": {
         "tags": [
@@ -3845,6 +3933,12 @@
             ],
             "title": "Token",
             "description": "Bearer token (servidores HTTP)"
+          },
+          "oauth": {
+            "type": "boolean",
+            "title": "Oauth",
+            "description": "Iniciar sesión con OAuth (servidores HTTP)",
+            "default": false
           }
         },
         "additionalProperties": false,

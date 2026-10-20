@@ -177,12 +177,15 @@ Preferencias de voz (en `/settings`): `voice_stt_engine` y `voice_tts_engine` (`
 |---|---|---|
 | GET | `/integrations` | Estado de la web y de cada servidor MCP (herramientas y niveles) |
 | PUT | `/integrations/web` | `{ "web_search_enabled", "web_fetch_enabled" }` |
-| POST | `/integrations/mcp` | Agregar: `{ name, transport: "stdio", command, args, env, secret_env }` o `{ name, transport: "http", url, token }` |
+| POST | `/integrations/mcp` | Agregar: `{ name, transport: "stdio", command, args, env, secret_env }` o `{ name, transport: "http", url, token }` o `{ name, transport: "http", url, oauth: true }` |
 | PATCH | `/integrations/mcp/{id}` | `{ enabled, name }` |
 | POST | `/integrations/mcp/{id}/reconnect` | Reconectar |
 | PUT | `/integrations/mcp/{id}/secrets` | Volver a cargar `secret_env` o `token` |
 | PUT | `/integrations/mcp/{id}/tools/{tool}` | `{ "level": "allow" \| "ask" \| "deny" \| "default" }` |
-| DELETE | `/integrations/mcp/{id}` | Quitar (borra sus secretos) |
+| DELETE | `/integrations/mcp/{id}` | Quitar (borra sus secretos y tokens OAuth) |
+| POST | `/integrations/mcp/{id}/oauth/open` | Abrir el inicio de sesión en el navegador de la PC (estado `needs_auth`) |
+| DELETE | `/integrations/mcp/{id}/oauth` | Cerrar sesión OAuth (borra tokens; vuelve a `needs_auth`) |
+| GET | `/integrations/oauth/callback` | Vuelta del servicio tras iniciar sesión (`code`, `state`) |
 
 Las acciones MCP con nivel «preguntar» crean una tarea `awaiting_approval` con
 `action = { kind: "mcp", tool: "Servidor/herramienta", args, … }`; se ejecutan con `POST /tasks/{id}/approval`.

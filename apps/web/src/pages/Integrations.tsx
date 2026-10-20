@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Loader2, Plug, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ExternalLink, Loader2, LogOut, Plug, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Badge, Card, Notice, PageHeader } from "../components/ui";
 import { useApi } from "../hooks/useApi";
 import { integrationsApi, parseEnvLines, type IntegrationsOverview, type McpServer, type ToolLevel } from "../lib/api";
@@ -7,6 +7,7 @@ import { integrationsApi, parseEnvLines, type IntegrationsOverview, type McpServ
 const STATUS: Record<McpServer["status"], { label: string; tone: "ok" | "warn" | "danger" | "muted" }> = {
   connected: { label: "Conectado", tone: "ok" },
   connecting: { label: "Conectando…", tone: "warn" },
+  needs_auth: { label: "Requiere iniciar sesión", tone: "warn" },
   error: { label: "Error", tone: "danger" },
   stopped: { label: "Desactivado", tone: "muted" },
 };
@@ -37,6 +38,13 @@ export function IntegrationsPage() {
   }
 
   const d = data.data;
+  const waiting = d?.mcp.some((s) => s.status === "connecting" || s.status === "needs_auth");
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => void data.reload(), 2000); // mientras se conecta o espera el inicio de sesión
+    return () => clearInterval(t);
+  }, [waiting]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="space-y-4">
       <PageHeader title="Integraciones" subtitle="Conectá KAI con la web y con otras aplicaciones mediante MCP."
@@ -113,8 +121,25 @@ function ServerCard({ s, busy, run }: { s: McpServer; busy: string | null; run: 
         {s.transport === "stdio" ? [s.command, ...s.args].join(" ") : s.url}
         {s.secret_env.length > 0 && ` · claves: ${s.secret_env.join(", ")}`}
         {s.has_token && " · con token"}
+        {s.oauth && " · inicio de sesión OAuth"}
       </p>
       {s.error && <p className="mt-1 text-xs text-danger">{s.error}</p>}
+      {s.status === "needs_auth" && s.auth_url && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <button className="btn btn-primary" disabled={busy !== null}
+            onClick={() => void run(`au-${s.id}`, () => integrationsApi.oauthOpen(s.id))}>
+            <ExternalLink className="h-4 w-4" />Iniciar sesión
+          </button>
+          <span className="text-muted">Se abre en tu navegador; al terminar, KAI se conecta solo (tenés 10 minutos).
+            {" "}<a className="underline" href={s.auth_url} target="_blank" rel="noopener noreferrer">¿No se abrió? Abrir el enlace</a></span>
+        </div>
+      )}
+      {s.oauth && s.status === "connected" && (
+        <button className="mt-1 inline-flex items-center gap-1 text-xs text-muted underline" disabled={busy !== null}
+          onClick={() => { if (confirm(`¿Cerrar la sesión de «${s.name}»? Vas a tener que iniciarla de nuevo.`)) void run(`lo-${s.id}`, () => integrationsApi.oauthLogout(s.id)); }}>
+          <LogOut className="h-3 w-3" />Cerrar sesión
+        </button>
+      )}
       {(s.secret_env.length > 0 || s.has_token) && <SecretsForm s={s} busy={busy} run={run} />}
       {s.tools.length > 0 && (
         <table className="mt-2 w-full text-xs">
@@ -155,6 +180,7 @@ function AddServer({ onAdded }: { onAdded: () => void }) {
   const [secretEnv, setSecretEnv] = useState("");
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
+  const [httpAuth, setHttpAuth] = useState<"none" | "token" | "oauth">("oauth");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<McpServer | null>(null);
@@ -166,7 +192,7 @@ function AddServer({ onAdded }: { onAdded: () => void }) {
     try {
       const body = transport === "stdio"
         ? { name, transport, command, args: args.split(/\r?\n/).map((a) => a.trim()).filter(Boolean), env: parseEnvLines(env), secret_env: parseEnvLines(secretEnv) }
-        : { name, transport, url, token: token || undefined };
+        : { name, transport, url, token: httpAuth === "token" && token ? token : undefined, oauth: httpAuth === "oauth" };
       const s = await integrationsApi.add(body);
       setResult(s);
       setName(""); setCommand(""); setArgs(""); setEnv(""); setSecretEnv(""); setUrl(""); setToken("");
@@ -201,8 +227,19 @@ function AddServer({ onAdded }: { onAdded: () => void }) {
         ) : (
           <>
             <label className="space-y-1">URL<input className="field font-mono" value={url} onChange={(e) => setUrl(e.target.value)} required placeholder="https://…/mcp" /></label>
-            <label className="space-y-1">Token (opcional, Bearer)<input className="field font-mono" type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></label>
-            <p className="text-xs text-muted md:col-span-2">Los servidores que requieren iniciar sesión con OAuth todavía no están soportados: usá uno con token.</p>
+            <label className="space-y-1">Acceso
+              <select className="field" value={httpAuth} onChange={(e) => setHttpAuth(e.target.value as "none" | "token" | "oauth")}>
+                <option value="oauth">Iniciar sesión (OAuth)</option>
+                <option value="token">Token (Bearer)</option>
+                <option value="none">Sin autenticación</option>
+              </select>
+            </label>
+            {httpAuth === "token" && (
+              <label className="space-y-1">Token<input className="field font-mono" type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" required /></label>
+            )}
+            {httpAuth === "oauth" && (
+              <p className="text-xs text-muted md:col-span-2">Después de conectar aparece «Iniciar sesión»: entrás con tu cuenta en el sitio del servicio y KAI guarda el acceso en el almacén de credenciales.</p>
+            )}
           </>
         )}
         <div className="flex gap-2 md:col-span-2">
@@ -212,8 +249,10 @@ function AddServer({ onAdded }: { onAdded: () => void }) {
         {error && <div className="md:col-span-2"><Notice tone="danger">{error}</Notice></div>}
         {result && (
           <div className="md:col-span-2">
-            <Notice tone={result.status === "connected" ? "info" : "warn"}>
-              {result.status === "connected" ? `«${result.name}» conectado: ${result.tools.length} herramientas.` : `«${result.name}» quedó guardado pero no conectó: ${result.error ?? "sin detalle"}`}
+            <Notice tone={result.status === "error" ? "warn" : "info"}>
+              {result.status === "connected" ? `«${result.name}» conectado: ${result.tools.length} herramientas.`
+                : result.status === "needs_auth" ? `«${result.name}» quedó guardado: tocá «Iniciar sesión» en su tarjeta.`
+                : `«${result.name}» quedó guardado pero no conectó: ${result.error ?? "sin detalle"}`}
             </Notice>
           </div>
         )}

@@ -450,7 +450,9 @@ export interface McpServer {
   url: string;
   has_token: boolean;
   enabled: boolean;
-  status: "connecting" | "connected" | "error" | "stopped";
+  status: "connecting" | "needs_auth" | "connected" | "error" | "stopped";
+  oauth: boolean;
+  auth_url: string | null;
   error: string | null;
   server_info: string;
   tools: McpTool[];
@@ -471,6 +473,7 @@ export interface McpServerIn {
   secret_env?: Record<string, string>;
   url?: string;
   token?: string;
+  oauth?: boolean;
 }
 
 export const integrationsApi = {
@@ -482,6 +485,8 @@ export const integrationsApi = {
   setLevel: (id: string, tool: string, level: ToolLevel | "default") =>
     api<McpServer>(`/integrations/mcp/${id}/tools/${encodeURIComponent(tool)}`, { method: "PUT", body: JSON.stringify({ level }) }),
   remove: (id: string) => api<void>(`/integrations/mcp/${id}`, { method: "DELETE" }),
+  oauthOpen: (id: string) => api<{ opened: boolean; auth_url: string }>(`/integrations/mcp/${id}/oauth/open`, { method: "POST" }),
+  oauthLogout: (id: string) => api<McpServer>(`/integrations/mcp/${id}/oauth`, { method: "DELETE" }),
   setSecrets: (id: string, body: { secret_env?: Record<string, string>; token?: string }) =>
     api<McpServer>(`/integrations/mcp/${id}/secrets`, { method: "PUT", body: JSON.stringify(body) }),
 };

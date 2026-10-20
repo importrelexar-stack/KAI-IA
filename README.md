@@ -52,7 +52,7 @@ Después, en **Configuración**, cargá tu clave de API de Anthropic (o ponela e
 
 - Pantalla **Integraciones**: conectá servidores **MCP** (el estándar abierto para conectar asistentes con
   aplicaciones: calendario, correo, notas, gestores de proyectos…), locales (un programa en tu PC) o remotos
-  (HTTP con token). Sus herramientas quedan disponibles para Claude: las de **solo lectura** se permiten por
+  (HTTP con token o **iniciando sesión con OAuth**). Sus herramientas quedan disponibles para Claude: las de **solo lectura** se permiten por
   defecto y las que **modifican algo piden autorización**; podés ajustarlo por herramienta. Las claves van
   al Administrador de credenciales de Windows.
 - **Web**: búsqueda y lectura de páginas (apagadas por defecto; tienen costo por uso).

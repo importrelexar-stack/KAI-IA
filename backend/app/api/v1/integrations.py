@@ -6,13 +6,14 @@ import re
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from app.api.deps import client_id, get_ctx, get_db, require_local
 from app.core.context import AppContext
 from app.core.errors import KaiError, NotFoundError
-from app.integrations.mcp_manager import McpManager, ServerConfig, load_configs, new_server_id, save_configs
+from app.integrations.mcp_manager import McpManager, SecretTokenStorage, ServerConfig, load_configs, new_server_id, save_configs
 from app.security.audit import audit
 from app.services.settings_service import get_preferences, update_preferences
 
@@ -34,6 +35,7 @@ class McpServerIn(BaseModel):
                                        description="Variables sensibles (claves): van al almacén de credenciales")
     url: str = Field(default="", max_length=500)
     token: str | None = Field(default=None, max_length=4000, description="Bearer token (servidores HTTP)")
+    oauth: bool = Field(default=False, description="Iniciar sesión con OAuth (servidores HTTP)")
 
     @field_validator("env", "secret_env")
     @classmethod
@@ -51,6 +53,8 @@ class McpServerIn(BaseModel):
             raise ValueError("Indicá el comando del servidor (ej.: npx, uvx o la ruta del programa).")
         if self.transport == "http" and not re.match(r"^https?://", self.url.strip()):
             raise ValueError("Indicá la URL del servidor (http:// o https://).")
+        if self.oauth and (self.transport != "http" or self.token):
+            raise ValueError("OAuth es sólo para servidores HTTP y reemplaza al token.")
         if self.transport == "http" and self.url.startswith("http://") and not re.match(
                 r"^http://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(/|$)", self.url):
             raise ValueError("Para servidores remotos usá https:// (el token viajaría sin cifrar).")
@@ -98,7 +102,8 @@ def _status(ctx: AppContext, c: ServerConfig) -> dict[str, Any]:
                           "custom": t.name in c.tool_levels})
     return {
         "id": c.id, "name": c.name, "transport": c.transport, "command": c.command, "args": c.args,
-        "env": c.env, "secret_env": c.secret_env, "url": c.url, "has_token": c.has_token, "enabled": c.enabled,
+        "env": c.env, "secret_env": c.secret_env, "url": c.url, "has_token": c.has_token, "oauth": c.oauth,
+        "enabled": c.enabled, "auth_url": conn.auth_url if conn else None,
         "status": conn.status if conn else ("stopped" if not c.enabled else "error"),
         "error": conn.error if conn else None, "server_info": conn.server_info if conn else "",
         "tools": tools,
@@ -140,7 +145,8 @@ async def add_server(body: McpServerIn, request: Request, ctx: Ctx, db: Db) -> d
         raise KaiError("Ya hay una integración con ese nombre.", code="duplicate", status_code=409)
     c = ServerConfig(id=new_server_id(), name=body.name.strip(), transport=body.transport,
                      command=body.command.strip(), args=body.args, env=body.env,
-                     secret_env=sorted(body.secret_env), url=body.url.strip(), has_token=bool(body.token))
+                     secret_env=sorted(body.secret_env), url=body.url.strip(), has_token=bool(body.token),
+                     oauth=body.oauth)
     for k, v in body.secret_env.items():
         ctx.secrets.set_secret(c.secret_name("env", k), v)
     if body.token:
@@ -221,5 +227,56 @@ async def remove_server(server_id: str, request: Request, ctx: Ctx, db: Db) -> N
         ctx.secrets.delete_secret(c.secret_name("env", k))
     if c.has_token:
         ctx.secrets.delete_secret(c.secret_name("token"))
+    SecretTokenStorage(ctx.secrets, c).clear()
     save_configs(db, [x for x in configs if x.id != c.id])
     audit(db, "integrations.mcp.remove", target=c.id, details={"name": c.name}, client=client_id(request))
+
+
+@router.delete("/mcp/{server_id}/oauth", summary="Cerrar la sesión OAuth (borra los tokens y pide iniciar sesión de nuevo)")
+async def oauth_logout(server_id: str, request: Request, ctx: Ctx, db: Db) -> dict[str, Any]:
+    c = _find(load_configs(db), server_id)
+    if not c.oauth:
+        raise KaiError("Esta integración no usa OAuth.", code="invalid", status_code=422)
+    SecretTokenStorage(ctx.secrets, c).clear()
+    audit(db, "integrations.mcp.oauth_logout", target=c.id, client=client_id(request))
+    await _manager(ctx).apply(c)
+    return _status(ctx, c)
+
+
+@router.post("/mcp/{server_id}/oauth/open", summary="Abrir el inicio de sesión en el navegador predeterminado de la PC")
+def oauth_open(server_id: str, ctx: Ctx, db: Db) -> dict[str, Any]:
+    import webbrowser
+
+    c = _find(load_configs(db), server_id)
+    conn = _manager(ctx).connections.get(c.id)
+    if conn is None or conn.status != "needs_auth" or not conn.auth_url:
+        raise KaiError("Esta integración no está esperando un inicio de sesión.", code="invalid", status_code=409)
+    opened = False
+    try:
+        opened = webbrowser.open(conn.auth_url)
+    except Exception:  # noqa: BLE001 - sin navegador disponible: la interfaz muestra el enlace
+        opened = False
+    return {"opened": bool(opened), "auth_url": conn.auth_url}
+
+
+_PAGE = """<!doctype html><html lang="es"><meta charset="utf-8"><title>KAI</title>
+<body style="font-family:system-ui;background:#05070b;color:#e8ecf3;display:grid;place-items:center;height:100vh;margin:0">
+<div style="text-align:center;max-width:28rem"><h1 style="font-weight:600">{title}</h1><p>{text}</p></div></body></html>"""
+
+
+@router.get("/oauth/callback", include_in_schema=False)
+def oauth_callback(request: Request, ctx: Ctx, db: Db, state: str = "", code: str | None = None,
+                   error: str | None = None) -> HTMLResponse:
+    """El servicio vuelve acá después de que el usuario inicia sesión en su navegador."""
+    from html import escape
+
+    try:
+        conn = _manager(ctx).complete_oauth(state, code, error)
+    except KaiError as e:
+        return HTMLResponse(_PAGE.format(title="No se pudo completar", text=escape(e.message)), status_code=400)
+    audit(db, "integrations.mcp.oauth", target=conn.config.id, details={"ok": not error}, client=client_id(request))
+    if error:
+        return HTMLResponse(_PAGE.format(title="Inicio de sesión cancelado",
+                                         text="Podés cerrar esta pestaña y volver a intentarlo desde KAI."))
+    return HTMLResponse(_PAGE.format(title="Listo", text=f"KAI quedó conectado a «{escape(conn.config.name)}». "
+                                                         "Podés cerrar esta pestaña."))

@@ -70,5 +70,7 @@ en el teléfono, firma de release y publicación en tiendas, renderizado Markdow
 - **Claude Cowork**: sigue sin API pública; se mantiene el puente manual. Se integrará sólo si Anthropic
   publica una integración oficial.
 
-Pendiente: servidores MCP que requieren inicio de sesión OAuth (hoy: token), notificaciones de rutinas
-en el teléfono, recursos y prompts de MCP (hoy: sólo herramientas).
+Agregado después: inicio de sesión **OAuth** para servidores MCP remotos (registro dinámico + PKCE con el
+SDK oficial; tokens en el almacén de credenciales; «Cerrar sesión»).
+
+Pendiente: recursos y prompts de MCP (hoy: sólo herramientas).

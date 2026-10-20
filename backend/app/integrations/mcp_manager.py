@@ -39,6 +39,7 @@ SETTING_KEY = "mcp_servers"
 MAX_RESULT_CHARS = 20_000
 CONNECT_TIMEOUT = 45.0
 CALL_TIMEOUT = 120.0
+OAUTH_TIMEOUT = 600.0
 Level = Literal["allow", "ask", "deny"]
 _SLUG = re.compile(r"[^a-z0-9]+")
 
@@ -58,6 +59,7 @@ class ServerConfig:
     secret_env: list[str] = field(default_factory=list)  # nombres; los valores están en el almacén seguro
     url: str = ""
     has_token: bool = False  # Authorization: Bearer <token> (token en el almacén seguro)
+    oauth: bool = False  # inicio de sesión OAuth (tokens en el almacén seguro)
     enabled: bool = True
     tool_levels: dict[str, Level] = field(default_factory=dict)
 
@@ -124,12 +126,53 @@ def format_result(server: str, result: Any) -> tuple[bool, str]:
     return ok, wrapped
 
 
+class SecretTokenStorage:
+    """Tokens OAuth y datos del cliente registrado, guardados en el almacén de credenciales."""
+
+    def __init__(self, secrets: SecretStore, config: ServerConfig) -> None:
+        self.secrets, self.config = secrets, config
+
+    def _get(self, kind: str, model: Any) -> Any:
+        raw = self.secrets.get_secret(self.config.secret_name(kind))
+        if not raw:
+            return None
+        try:
+            return model.model_validate_json(raw)
+        except Exception:  # noqa: BLE001 - dato corrupto: se vuelve a iniciar sesión
+            return None
+
+    async def get_tokens(self) -> Any:
+        from mcp.shared.auth import OAuthToken
+
+        return self._get("oauth_tokens", OAuthToken)
+
+    async def set_tokens(self, tokens: Any) -> None:
+        self.secrets.set_secret(self.config.secret_name("oauth_tokens"), tokens.model_dump_json())
+
+    async def get_client_info(self) -> Any:
+        from mcp.shared.auth import OAuthClientInformationFull
+
+        return self._get("oauth_client", OAuthClientInformationFull)
+
+    async def set_client_info(self, client_info: Any) -> None:
+        self.secrets.set_secret(self.config.secret_name("oauth_client"), client_info.model_dump_json())
+
+    def clear(self) -> None:
+        for kind in ("oauth_tokens", "oauth_client"):
+            self.secrets.delete_secret(self.config.secret_name(kind))
+
+
 class McpConnection:
-    def __init__(self, config: ServerConfig, secrets: SecretStore, log_dir: Path) -> None:
+    def __init__(self, config: ServerConfig, secrets: SecretStore, log_dir: Path,
+                 oauth_redirect_uri: str = "", oauth_pending: dict[str, McpConnection] | None = None) -> None:
         self.config = config
+        self.oauth_redirect_uri = oauth_redirect_uri
+        self._oauth_pending = oauth_pending if oauth_pending is not None else {}
+        self.auth_url: str | None = None
+        self._oauth_future: asyncio.Future[tuple[str, str | None]] | None = None
         self.secrets = secrets
         self.log_dir = log_dir
-        self.status: Literal["connecting", "connected", "error", "stopped"] = "stopped"
+        self.status: Literal["connecting", "needs_auth", "connected", "error", "stopped"] = "stopped"
         self.error: str | None = None
         self.tools: list[ToolInfo] = []
         self.server_info: str = ""
@@ -171,7 +214,7 @@ class McpConnection:
     async def _run(self) -> None:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
-        from mcp.client.streamable_http import streamablehttp_client
+        from mcp.client.streamable_http import streamable_http_client
 
         c = self.config
         errlog = None
@@ -185,16 +228,24 @@ class McpConnection:
                     read, write = await stack.enter_async_context(stdio_client(params, errlog=errlog))
                 else:
                     headers = {}
+                    auth = self._oauth_provider() if c.oauth else None
                     if c.has_token:
                         token = self.secrets.get_secret(c.secret_name("token"))
                         if not token:
                             raise KaiError("Falta el token: volvé a cargarlo en Integraciones.", code="missing_secret")
                         headers["Authorization"] = f"Bearer {token}"
-                    read, write, _ = await stack.enter_async_context(streamablehttp_client(c.url, headers=headers))
+                    import httpx
+
+                    http = await stack.enter_async_context(httpx.AsyncClient(
+                        headers=headers, auth=auth, follow_redirects=True,
+                        timeout=httpx.Timeout(30.0, read=CALL_TIMEOUT + 60)))
+                    read, write, _ = await stack.enter_async_context(streamable_http_client(c.url, http_client=http))
                 session = await stack.enter_async_context(ClientSession(read, write))
-                init = await asyncio.wait_for(session.initialize(), CONNECT_TIMEOUT)
+                init = await asyncio.wait_for(session.initialize(),
+                                              OAUTH_TIMEOUT + 30 if c.oauth else CONNECT_TIMEOUT)
                 self.server_info = f"{init.serverInfo.name} {init.serverInfo.version}".strip()
                 self.tools = await self._list_tools(session)
+                self.auth_url = None
                 self.status = "connected"
                 self._ready.set()
                 log.info("MCP %s conectado: %d herramientas", c.name, len(self.tools))
@@ -221,10 +272,68 @@ class McpConnection:
             log.warning("MCP %s: %s", c.name, self.error)
         finally:
             self._ready.set()
+            self._forget_oauth()
             while not self._queue.empty():  # llamadas que quedaron esperando
                 item = self._queue.get_nowait()
                 if item is not None and not item[2].done():
                     item[2].set_exception(KaiError(f"La integración {c.name} se desconectó.", code="mcp_offline"))
+
+    # ---- OAuth ----
+
+    def _oauth_provider(self) -> Any:
+        from mcp.client.auth import OAuthClientProvider
+        from mcp.shared.auth import OAuthClientMetadata
+
+        if not self.oauth_redirect_uri:
+            raise KaiError("OAuth no está disponible en esta instalación.", code="oauth_unavailable")
+        metadata = OAuthClientMetadata(
+            client_name="KAI AI", redirect_uris=[self.oauth_redirect_uri],  # type: ignore[list-item]
+            grant_types=["authorization_code", "refresh_token"], response_types=["code"],
+            token_endpoint_auth_method="none")
+        return OAuthClientProvider(server_url=self.config.url, client_metadata=metadata,
+                                   storage=SecretTokenStorage(self.secrets, self.config),
+                                   redirect_handler=self._on_redirect, callback_handler=self._wait_callback,
+                                   timeout=OAUTH_TIMEOUT)
+
+    async def _on_redirect(self, url: str) -> None:
+        """El servidor pide iniciar sesión: KAI muestra el enlace (no abre nada por su cuenta)."""
+        from urllib.parse import parse_qs, urlparse
+
+        state = (parse_qs(urlparse(url).query).get("state") or [""])[0]
+        if not state:
+            raise KaiError("El servidor no envió el parámetro state de OAuth.", code="oauth_error")
+        self._forget_oauth()
+        self._oauth_future = asyncio.get_running_loop().create_future()
+        self._oauth_pending[state] = self
+        self.auth_url = url
+        self.status = "needs_auth"
+        self._ready.set()  # la API responde enseguida con «requiere iniciar sesión»
+
+    async def _wait_callback(self) -> tuple[str, str | None]:
+        if self._oauth_future is None:
+            raise KaiError("No hay un inicio de sesión en curso.", code="oauth_error")
+        try:
+            return await asyncio.wait_for(self._oauth_future, OAUTH_TIMEOUT)
+        except asyncio.TimeoutError:
+            raise KaiError("Se venció el tiempo para iniciar sesión. Tocá «Reconectar» para intentarlo de nuevo.",
+                           code="oauth_timeout") from None
+
+    def complete_oauth(self, code: str | None, state: str, error: str | None) -> None:
+        fut = self._oauth_future
+        if fut is None or fut.done():
+            raise KaiError("Ese inicio de sesión ya no está en curso.", code="oauth_error", status_code=409)
+        if error or not code:
+            fut.set_exception(KaiError(f"El servicio rechazó el inicio de sesión: {error or 'sin código'}.",
+                                       code="oauth_denied"))
+        else:
+            fut.set_result((code, state))
+        self.status = "connecting"
+        self.auth_url = None
+
+    def _forget_oauth(self) -> None:
+        for state, conn in list(self._oauth_pending.items()):
+            if conn is self:
+                del self._oauth_pending[state]
 
     @staticmethod
     async def _list_tools(session: Any) -> list[ToolInfo]:
@@ -269,9 +378,11 @@ def _describe(e: BaseException) -> str:
 class McpManager:
     """Conexiones activas con los servidores MCP configurados."""
 
-    def __init__(self, secrets: SecretStore, log_dir: Path) -> None:
+    def __init__(self, secrets: SecretStore, log_dir: Path, oauth_redirect_uri: str = "") -> None:
         self.secrets = secrets
         self.log_dir = log_dir
+        self.oauth_redirect_uri = oauth_redirect_uri
+        self.oauth_pending: dict[str, McpConnection] = {}
         self.connections: dict[str, McpConnection] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
 
@@ -282,7 +393,7 @@ class McpManager:
                 self._connect(c)
 
     def _connect(self, c: ServerConfig) -> McpConnection:
-        conn = McpConnection(c, self.secrets, self.log_dir)
+        conn = McpConnection(c, self.secrets, self.log_dir, self.oauth_redirect_uri, self.oauth_pending)
         self.connections[c.id] = conn
         conn.start()
         return conn
@@ -305,6 +416,14 @@ class McpManager:
         old = self.connections.pop(server_id, None)
         if old is not None:
             await old.stop()
+
+    def complete_oauth(self, state: str, code: str | None, error: str | None) -> McpConnection:
+        conn = self.oauth_pending.pop(state, None)
+        if conn is None:
+            raise KaiError("No hay un inicio de sesión en curso con ese código. Volvé a intentarlo desde KAI.",
+                           code="oauth_unknown_state", status_code=400)
+        conn.complete_oauth(code, state, error)
+        return conn
 
     def update_levels(self, config: ServerConfig) -> None:
         conn = self.connections.get(config.id)

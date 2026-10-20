@@ -105,3 +105,93 @@ def test_web_toggles(client):
     assert r.json() == {"web_search_enabled": False, "web_fetch_enabled": True}
     agents = {a["id"]: a for a in client.get("/api/v1/agents").json()}
     assert agents["research"]["status"] == "active" and agents["research"]["tools"] == ["web_fetch"]
+
+
+@pytest.fixture
+def oauth_server():
+    import socket
+    import subprocess
+    import time as _time
+
+    import httpx
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    proc = subprocess.Popen([sys.executable, str(Path(__file__).parent / "fixtures" / "mcp_oauth_server.py"),
+                             str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    url = f"http://127.0.0.1:{port}"
+    try:
+        for _ in range(100):
+            try:
+                httpx.get(f"{url}/.well-known/oauth-authorization-server", timeout=1)
+                break
+            except httpx.HTTPError:
+                _time.sleep(0.1)
+        yield url
+    finally:
+        proc.terminate()
+        proc.wait(10)
+
+
+def _wait_status(client, server_id, wanted, tries=100):
+    import time as _time
+
+    for _ in range(tries):
+        srv = next(s for s in client.get("/api/v1/integrations").json()["mcp"] if s["id"] == server_id)
+        if srv["status"] in wanted:
+            return srv
+        _time.sleep(0.1)
+    return srv
+
+
+def test_oauth_login_flow(client, oauth_server, monkeypatch):
+    from urllib.parse import urlparse
+
+    import httpx
+
+    r = client.post("/api/v1/integrations/mcp", json={"name": "Nube", "transport": "http",
+                                                      "url": f"{oauth_server}/mcp", "oauth": True})
+    assert r.status_code == 201, r.text
+    srv = _wait_status(client, r.json()["id"], {"needs_auth"})
+    assert srv["status"] == "needs_auth" and srv["auth_url"].startswith(f"{oauth_server}/authorize")
+    assert client.get("/api/v1/integrations/oauth/callback?state=otro&code=x").status_code == 400
+    import webbrowser
+
+    opened: list[str] = []
+    monkeypatch.setattr(webbrowser, "open", lambda u: opened.append(u) or True)
+    assert client.post(f"/api/v1/integrations/mcp/{srv['id']}/oauth/open").json()["opened"] is True
+    assert opened == [srv["auth_url"]]
+
+    # El usuario inicia sesión en su navegador; el servicio lo devuelve al callback de KAI.
+    back = httpx.get(srv["auth_url"], follow_redirects=False)
+    assert back.status_code in (302, 307)
+    loc = urlparse(back.headers["location"])
+    assert loc.path == "/api/v1/integrations/oauth/callback"
+    page = client.get(f"{loc.path}?{loc.query}")
+    assert page.status_code == 200 and "Listo" in page.text
+
+    srv = _wait_status(client, srv["id"], {"connected", "error"})
+    assert srv["status"] == "connected", srv
+    assert [t["name"] for t in srv["tools"]] == ["quien_soy"]
+    secrets = client.app.state.ctx.secrets
+    assert secrets.get_secret(f"mcp:{srv['id']}:oauth_tokens")  # tokens en el almacén seguro
+    assert "access_token" not in str(client.get("/api/v1/integrations").json())
+
+    # Reconectar reutiliza los tokens guardados: no vuelve a pedir sesión.
+    srv = client.post(f"/api/v1/integrations/mcp/{srv['id']}/reconnect").json()
+    assert srv["status"] == "connected"
+    # Cerrar sesión borra los tokens y vuelve a pedir inicio de sesión.
+    srv = client.delete(f"/api/v1/integrations/mcp/{srv['id']}/oauth").json()
+    assert srv["status"] == "needs_auth" and not secrets.get_secret(f"mcp:{srv['id']}:oauth_tokens")
+    assert client.delete(f"/api/v1/integrations/mcp/{srv['id']}").status_code == 204
+    assert not secrets.get_secret(f"mcp:{srv['id']}:oauth_client")
+
+
+def test_oauth_validation(client):
+    bad = client.post("/api/v1/integrations/mcp", json={"name": "X", "transport": "stdio", "command": "x",
+                                                        "oauth": True})
+    assert bad.status_code == 422
+    bad = client.post("/api/v1/integrations/mcp", json={"name": "Y", "transport": "http", "url": "https://a.b/mcp",
+                                                        "oauth": True, "token": "t"})
+    assert bad.status_code == 422
