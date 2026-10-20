@@ -19,7 +19,9 @@ from app.routines import schedule as sched
 from app.routines.runner import compute_next, run_routine
 from app.security.audit import audit
 
-router = APIRouter(prefix="/routines", tags=["routines"], dependencies=[Depends(require_local)])
+# Ver y ejecutar: también desde un teléfono vinculado. Crear, modificar y borrar: sólo desde la PC.
+router = APIRouter(prefix="/routines", tags=["routines"])
+Local = [Depends(require_local)]
 Ctx = Annotated[AppContext, Depends(get_ctx)]
 Db = Annotated[Session, Depends(get_db)]
 MAX_ROUTINES = 30
@@ -71,7 +73,7 @@ def list_routines(db: Db) -> list[dict[str, Any]]:
     return [_out(r) for r in db.execute(select(Routine).order_by(Routine.created_at)).scalars()]
 
 
-@router.post("", status_code=201, summary="Crear una rutina")
+@router.post("", status_code=201, summary="Crear una rutina", dependencies=Local)
 def create_routine(body: RoutineIn, request: Request, db: Db) -> dict[str, Any]:
     if len(list(db.execute(select(Routine.id)).scalars())) >= MAX_ROUTINES:
         raise KaiError(f"Máximo {MAX_ROUTINES} rutinas.", code="too_many", status_code=409)
@@ -85,7 +87,7 @@ def create_routine(body: RoutineIn, request: Request, db: Db) -> dict[str, Any]:
     return _out(r)
 
 
-@router.patch("/{routine_id}", summary="Modificar una rutina")
+@router.patch("/{routine_id}", summary="Modificar una rutina", dependencies=Local)
 def update_routine(routine_id: str, body: RoutineUpdate, request: Request, db: Db) -> dict[str, Any]:
     r = _get(db, routine_id)
     if body.name is not None:
@@ -104,7 +106,7 @@ def update_routine(routine_id: str, body: RoutineUpdate, request: Request, db: D
     return _out(r)
 
 
-@router.delete("/{routine_id}", status_code=204, summary="Eliminar una rutina (su conversación queda en el historial)")
+@router.delete("/{routine_id}", status_code=204, summary="Eliminar una rutina (su conversación queda en el historial)", dependencies=Local)
 def delete_routine(routine_id: str, request: Request, db: Db) -> None:
     r = _get(db, routine_id)
     db.delete(r)

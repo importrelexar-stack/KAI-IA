@@ -57,6 +57,11 @@ class ContractTest {
         assertEquals("nota.txt", detail.messages.first().attachments!!.single().name)
         assertTrue(c.conversations().any { it.id == meta.conversationId })
         c.tasks()
+        val created = KaiJson.parseToJsonElement(admin("POST", "/routines",
+            """{"name":"Resumen","prompt":"Resumime pendientes","schedule":{"type":"daily","time":"08:00"}}""")).jsonObject
+        val routine = c.routines().single { it.id == created["id"]!!.jsonPrimitive.content }
+        assertEquals("todos los días a las 08:00", routine.scheduleText)
+        c.runRoutine(routine.id)
         val devices = admin("GET", "/devices")
         assertTrue(devices.contains("\"Contrato\""))
     }

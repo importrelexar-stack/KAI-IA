@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import ai.kai.android.KaiViewModel
 import ai.kai.core.KaiTask
+import ai.kai.core.Routine
 import kotlinx.serialization.json.JsonPrimitive
 
 private val STATUS = mapOf(
@@ -41,12 +42,17 @@ private val STATUS = mapOf(
 
 @Composable
 fun TasksScreen(vm: KaiViewModel, modifier: Modifier = Modifier) {
-    LaunchedEffect(Unit) { vm.refreshTasks() }
+    LaunchedEffect(Unit) { vm.refreshTasks(); vm.refreshRoutines() }
     val sorted = vm.tasks.sortedByDescending { it.awaitingApproval }
     var confirm by remember { mutableStateOf<Pair<KaiTask, Boolean>?>(null) }
     LazyColumn(modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         vm.error?.let { item { ErrorBanner(it) { vm.error = null } } }
+        if (vm.routines.isNotEmpty()) {
+            item { Text("Rutinas", style = MaterialTheme.typography.titleMedium) }
+            items(vm.routines, key = { "r-" + it.id }) { r -> RoutineCard(r, vm) }
+            item { Text("Tareas", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp)) }
+        }
         if (sorted.isEmpty()) item { Text("No hay tareas.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         items(sorted, key = { it.id }) { t ->
             Card(colors = CardDefaults.cardColors(containerColor = KaiPanel)) {
@@ -142,4 +148,27 @@ fun SettingsScreen(vm: KaiViewModel, modifier: Modifier = Modifier) {
         confirmButton = { Button(onClick = { vm.unpair(); confirmUnpair = false }) { Text("Desvincular") } },
         dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancelar") } },
     )
+}
+
+@Composable
+private fun RoutineCard(r: Routine, vm: KaiViewModel) {
+    Card(colors = CardDefaults.cardColors(containerColor = KaiPanel)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(r.name, style = MaterialTheme.typography.titleSmall)
+            Text(if (r.enabled) r.scheduleText else "Pausada", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val (label, color) = when (r.lastStatus) {
+                "ok" -> "Última ejecución: OK" to KaiOk
+                "error" -> "Última ejecución: falló" to KaiDanger
+                "running" -> "Ejecutando…" to KaiWarn
+                else -> "Todavía no se ejecutó" to MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            Text(label, color = color, style = MaterialTheme.typography.labelMedium)
+            r.lastError?.takeIf { r.lastStatus == "error" }?.let { Text(it, color = KaiDanger, style = MaterialTheme.typography.bodySmall) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { vm.runRoutine(r) }, enabled = r.lastStatus != "running") { Text("Ejecutar ahora") }
+                r.conversationId?.let { id -> TextButton(onClick = { vm.openConversation(id) }) { Text("Ver resultado") } }
+            }
+        }
+    }
 }

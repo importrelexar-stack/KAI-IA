@@ -55,8 +55,10 @@ más una prueba de contrato del cliente contra KAI Core real.
 
 Por qué «beta»: el APK se compila y prueba en CI, pero todavía no se probó en un teléfono físico.
 
+Agregado después: rutinas en el teléfono (ver, ejecutar, aviso al terminar) y respuestas con formato.
+
 Pendiente: notificaciones en tiempo real (push sin Google requiere un servicio en primer plano), «Hey KAI»
-en el teléfono, firma de release y publicación en tiendas, renderizado Markdown en las respuestas.
+en el teléfono, firma de release y publicación en tiendas.
 
 ## ✅ Fase 6 — Integraciones (esta versión)
 

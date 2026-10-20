@@ -68,6 +68,21 @@ data class KaiTask(
 }
 
 @Serializable
+data class Routine(
+    val id: String,
+    val name: String,
+    val prompt: String = "",
+    @SerialName("schedule_text") val scheduleText: String = "",
+    val enabled: Boolean = true,
+    @SerialName("conversation_id") val conversationId: String? = null,
+    @SerialName("next_run_at") val nextRunAt: String? = null,
+    @SerialName("last_run_at") val lastRunAt: String? = null,
+    @SerialName("last_status") val lastStatus: String? = null,
+    @SerialName("last_error") val lastError: String? = null,
+    @SerialName("run_count") val runCount: Int = 0,
+)
+
+@Serializable
 data class PairResult(val token: String, @SerialName("device_id") val deviceId: String, val name: String)
 
 @Serializable

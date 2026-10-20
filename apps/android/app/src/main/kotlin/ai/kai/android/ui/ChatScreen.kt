@@ -168,6 +168,7 @@ private fun Bubble(m: UiMessage, onOpenTask: () -> Unit) {
                 })
             }
             when {
+                m.content.isNotEmpty() && !isUser -> MarkdownText(m.content)
                 m.content.isNotEmpty() -> SelectionContainer { Text(m.content) }
                 m.pending && !isUser -> Text("…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

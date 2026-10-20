@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        intent?.getStringExtra(ApprovalWorker.EXTRA_OPEN_CONVERSATION)?.let { vm.openConversation(it); return }
         if (intent?.getBooleanExtra(ApprovalWorker.EXTRA_OPEN_TASKS, false) == true) {
             vm.tab = Tab.Tasks
             vm.refreshTasks()

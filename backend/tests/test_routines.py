@@ -95,4 +95,11 @@ def test_routine_validation_and_local_only(client):
     code = client.post("/api/v1/devices/pairing").json()["code"]
     remote = TestClient(client.app, client=("192.168.1.50", 5000), base_url="http://192.168.1.10:8765")
     token = remote.post("/api/v1/devices/pair", json={"code": code}).json()["token"]
-    assert remote.get("/api/v1/routines", headers={"Authorization": f"Bearer {token}"}).status_code == 403
+    auth = {"Authorization": f"Bearer {token}"}
+    rt = client.post("/api/v1/routines", json={"name": "R", "prompt": "hola", "schedule": {"type": "daily", "time": "09:00"}}).json()
+    assert remote.get("/api/v1/routines", headers=auth).status_code == 200  # el teléfono puede verlas
+    assert remote.post(f"/api/v1/routines/{rt['id']}/run", headers=auth).status_code == 202  # y ejecutarlas
+    assert remote.post("/api/v1/routines", headers=auth,
+                       json={"name": "X", "prompt": "hola", "schedule": {"type": "daily", "time": "09:00"}}).status_code == 403
+    assert remote.patch(f"/api/v1/routines/{rt['id']}", headers=auth, json={"enabled": False}).status_code == 403
+    assert remote.delete(f"/api/v1/routines/{rt['id']}", headers=auth).status_code == 403

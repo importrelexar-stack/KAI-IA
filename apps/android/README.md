@@ -39,8 +39,9 @@ redes de confianza.
 | Archivos | Adjuntar documentos (PDF, Word, texto) y fotos; las fotos se achican a 1568 px |
 | Voz | Tocá el micrófono, hablá, se corta solo con el silencio. Transcribe y habla la PC (Whisper/Piper locales) |
 | Tareas | Lista con estado; **Autorizar/Rechazar** muestra la acción exacta y pide confirmación |
-| Historial | Conversaciones guardadas en la PC |
-| Notificaciones | Avisa si hay acciones esperando autorización (cada 15 min y con la app abierta). La notificación sólo abre la app: no se aprueba a ciegas |
+| Historial | Conversaciones guardadas en la PC; las respuestas se muestran con formato (títulos, listas, negrita, código) |
+| Rutinas | En la pestaña Tareas: ver las rutinas, «Ejecutar ahora» y «Ver resultado». Se crean y modifican desde la PC |
+| Notificaciones | Avisa si hay acciones esperando autorización y cuando termina una rutina (cada 15 min y con la app abierta). La notificación sólo abre la app: no se aprueba a ciegas |
 | Desvincular | Borra el token del teléfono y lo revoca en KAI |
 
 ## Seguridad

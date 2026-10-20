@@ -127,6 +127,13 @@ class KaiClient(
     suspend fun decide(taskId: String, approve: Boolean, note: String? = null): KaiTask =
         post("/tasks/$taskId/approval", ApprovalBody(approve, note))
 
+    suspend fun routines(): List<Routine> = get("/routines")
+
+    /** Ejecuta la rutina ahora (en segundo plano en la PC). */
+    suspend fun runRoutine(id: String) {
+        call(request("/routines/$id/run").post(ByteArray(0).toRequestBody(null)).build())
+    }
+
     suspend fun uploadAttachment(name: String, mimeType: String, bytes: ByteArray): AttachmentOut {
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("file", name, bytes.toRequestBody(mimeType.toMediaType()))

@@ -16,7 +16,11 @@ class KaiApp : Application() {
         val channel = NotificationChannel(
             ApprovalWorker.CHANNEL, getString(R.string.channel_approvals), NotificationManager.IMPORTANCE_HIGH,
         ).apply { description = getString(R.string.channel_approvals_desc) }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(channel)
+        nm.createNotificationChannel(NotificationChannel(
+            ApprovalWorker.CHANNEL_ROUTINES, getString(R.string.channel_routines), NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply { description = getString(R.string.channel_routines_desc) })
         if (SecureStore(this).load() != null) scheduleApprovalChecks()
     }
 

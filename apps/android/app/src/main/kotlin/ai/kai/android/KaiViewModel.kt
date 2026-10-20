@@ -23,6 +23,7 @@ import ai.kai.core.Message
 import ai.kai.core.Pairing
 import ai.kai.core.PairingInfo
 import ai.kai.core.PrivateNetwork
+import ai.kai.core.Routine
 import ai.kai.core.ToolEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -88,6 +89,8 @@ class KaiViewModel(app: Application) : AndroidViewModel(app) {
     var tasks by mutableStateOf<List<KaiTask>>(emptyList())
         private set
     var conversations by mutableStateOf<List<ConversationSummary>>(emptyList())
+        private set
+    var routines by mutableStateOf<List<Routine>>(emptyList())
         private set
 
     private fun client(): KaiClient? = session?.let { KaiClient(it.baseUrl, it.token) }
@@ -161,7 +164,7 @@ class KaiViewModel(app: Application) : AndroidViewModel(app) {
         store.clear()
         (getApplication<Application>() as KaiApp).cancelApprovalChecks()
         session = null
-        messages.clear(); attachments.clear(); tasks = emptyList(); conversations = emptyList()
+        messages.clear(); attachments.clear(); tasks = emptyList(); conversations = emptyList(); routines = emptyList()
         conversationId = null
         if (!keepError) error = null
     }
@@ -172,6 +175,7 @@ class KaiViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             while (isActive && session != null) {
                 refreshTasks(quiet = true)
+                refreshRoutines()
                 delay(20_000)
             }
         }
@@ -186,6 +190,32 @@ class KaiViewModel(app: Application) : AndroidViewModel(app) {
                 ApprovalWorker.notifyNew(getApplication(), store, tasks)
             } catch (e: Throwable) {
                 if (!quiet || (e is KaiApiException && e.status == 401)) handle(e) else if (e is KaiApiException && e.code == "offline") online = false
+            }
+        }
+    }
+
+    fun refreshRoutines() {
+        val c = client() ?: return
+        viewModelScope.launch {
+            try {
+                routines = c.routines()
+                ApprovalWorker.notifyRoutines(getApplication(), store, routines)
+            } catch (e: Throwable) {
+                if (e is KaiApiException && e.status == 401) handle(e)
+            }
+        }
+    }
+
+    fun runRoutine(r: Routine) {
+        val c = client() ?: return
+        viewModelScope.launch {
+            try {
+                c.runRoutine(r.id)
+                routines = routines.map { if (it.id == r.id) it.copy(lastStatus = "running") else it }
+                delay(4000)
+                refreshRoutines()
+            } catch (e: Throwable) {
+                handle(e)
             }
         }
     }

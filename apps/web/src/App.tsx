@@ -90,7 +90,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 6 (integraciones)</div>
+        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · v0.8</div>
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">

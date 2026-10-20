@@ -66,6 +66,11 @@ class SecureStore(context: Context) {
 
     fun clear() = prefs.edit().clear().apply()
 
+    /** Última ejecución ya avisada de cada rutina ("id|fecha"); null = todavía no se inicializó. */
+    var seenRoutineRuns: Map<String, String>?
+        get() = prefs.getStringSet("seen_routine_runs", null)?.associate { it.substringBefore('|') to it.substringAfter('|') }
+        set(v) = prefs.edit().putStringSet("seen_routine_runs", v?.map { "${it.key}|${it.value}" }?.toSet()).apply()
+
     /** IDs de tareas ya notificadas (para no repetir la notificación). */
     var notifiedTasks: Set<String>
         get() = prefs.getStringSet("notified_tasks", emptySet()) ?: emptySet()

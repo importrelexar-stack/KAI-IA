@@ -126,6 +126,17 @@ class KaiClientTest {
         assertTrue(req.body.readUtf8().contains("filename=\"n.txt\""))
     }
 
+    @Test fun routinesListAndRun() = runBlocking {
+        server.enqueue(MockResponse().setBody("""[{"id":"r1","name":"Resumen","schedule_text":"todos los días a las 08:00","last_status":"ok","conversation_id":"c1","run_count":3}]"""))
+        server.enqueue(MockResponse().setResponseCode(202).setBody("""{"status":"started"}"""))
+        val r = client.routines().single()
+        assertEquals("ok", r.lastStatus); assertEquals(3, r.runCount)
+        client.runRoutine("r1")
+        server.takeRequest()
+        val run = server.takeRequest()
+        assertEquals("POST", run.method); assertEquals("/api/v1/routines/r1/run", run.path)
+    }
+
     @Test fun refusesPublicAddresses() {
         try { KaiClient("http://8.8.8.8:8765", "x"); fail() } catch (_: IllegalArgumentException) {}
     }

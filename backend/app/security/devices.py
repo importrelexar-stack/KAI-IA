@@ -177,6 +177,8 @@ _DEVICE_RULES: list[tuple[set[str], re.Pattern[str]]] = [
     ({"GET"}, re.compile(r"^/api/v1/memory/search$")),
     ({"POST"}, re.compile(r"^/api/v1/(chat|chat/attachments|tasks|voice/transcribe|voice/synthesize|voice/state)$")),
     ({"POST"}, re.compile(r"^/api/v1/tasks/[^/]+/(approval|transition)$")),
+    ({"GET"}, re.compile(r"^/api/v1/routines$")),
+    ({"POST"}, re.compile(r"^/api/v1/routines/[^/]+/run$")),
     ({"POST"}, re.compile(r"^/api/v1/memory/[^/]+/approve$")),
     ({"PATCH", "DELETE"}, re.compile(r"^/api/v1/conversations/[^/]+$")),
     ({"DELETE"}, re.compile(r"^/api/v1/devices/me$")),
