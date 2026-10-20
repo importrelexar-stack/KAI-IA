@@ -127,3 +127,13 @@ def test_openapi_and_root(client):
     spec = client.get("/openapi.json").json()
     assert "/api/v1/chat" in spec["paths"] and "/api/v1/cowork/prepare" in spec["paths"]
     assert "La interfaz no está compilada" in client.get("/").json()["message"]
+
+
+def test_shutdown_requires_token(client):
+    assert client.post("/api/v1/system/shutdown").status_code == 403  # sin token configurado
+    called = []
+    client.app.state.shutdown_token = "secreto-123"
+    client.app.state.request_shutdown = lambda: called.append(True)
+    assert client.post("/api/v1/system/shutdown", headers={"X-KAI-Shutdown": "otro"}).status_code == 403
+    r = client.post("/api/v1/system/shutdown", headers={"X-KAI-Shutdown": "secreto-123"})
+    assert r.status_code == 200 and called == [True]

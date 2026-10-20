@@ -1,5 +1,15 @@
 # Cambios
 
+## [0.5.0] — 2026-10-20 — Fase 4b (app de escritorio)
+
+### Agregado
+- App de escritorio Tauri 2 con instalador NSIS para Windows: KAI Core empaquetado (PyInstaller, con
+  interfaz y voz local) como sidecar, pantalla de carga, bandeja, Ctrl+Alt+K, instancia única.
+- KAI Core empaquetado guarda los datos en `%LOCALAPPDATA%\KAI`.
+- Cierre ordenado (`POST /api/v1/system/shutdown` con token por sesión) y watchdog del proceso padre:
+  KAI Core no queda huérfano si la app se cierra de golpe.
+- Workflow que construye el sidecar y el instalador en Windows, los ejecuta y verifica que KAI responde.
+
 ## [0.4.0] — 2026-10-20 — Fase 4 (automatización de Windows)
 
 ### Agregado

@@ -1,5 +1,19 @@
 # Instalación en Windows 10/11
 
+## Opción A — App de escritorio (recomendada)
+
+1. Descargá `KAI AI_x.y.z_x64-setup.exe` del release **desktop-latest** del repositorio.
+2. Ejecutalo (instala para tu usuario, sin permisos de administrador). Si SmartScreen avisa que el
+   archivo no está firmado: «Más información» → «Ejecutar de todos modos».
+3. Abrí **KAI AI** desde el menú Inicio. La primera vez tarda unos segundos en iniciar.
+4. Configurá tu clave de API en Configuración.
+
+Datos en `%LOCALAPPDATA%\KAI`. Para salir: ícono de KAI en la bandeja → Salir. Atajo: Ctrl+Alt+K.
+Para desinstalar: Configuración de Windows → Aplicaciones → KAI AI (los datos de `%LOCALAPPDATA%\KAI`
+se conservan; borralos a mano si querés).
+
+## Opción B — Desde el código fuente
+
 ## 1. Requisitos
 
 | Componente | Necesario para | Cómo instalarlo |

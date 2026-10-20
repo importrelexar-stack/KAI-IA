@@ -13,13 +13,33 @@ from pathlib import Path
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+import os
+import sys
+
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = BACKEND_DIR.parent
+
+# Empaquetado con PyInstaller (app de escritorio): los datos van a la carpeta del usuario
+# y la interfaz viaja dentro del ejecutable.
+FROZEN = bool(getattr(sys, "frozen", False))
+
+
+def _user_data_dir() -> Path:
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "KAI"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "KAI"
+    return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "kai"
+
+
+DEFAULT_DATA_DIR = _user_data_dir() if FROZEN else REPO_ROOT / "data"
+DEFAULT_WEB_DIST = (Path(getattr(sys, "_MEIPASS", BACKEND_DIR)) / "web") if FROZEN else REPO_ROOT / "apps" / "web" / "dist"
+ENV_FILES = (str(DEFAULT_DATA_DIR / ".env"),) if FROZEN else (str(REPO_ROOT / ".env"), str(BACKEND_DIR / ".env"))
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(str(REPO_ROOT / ".env"), str(BACKEND_DIR / ".env")),
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -41,8 +61,8 @@ class Settings(BaseSettings):
     )
 
     # Datos
-    data_dir: Path = Field(default=REPO_ROOT / "data", alias="KAI_DATA_DIR")
-    web_dist: Path = Field(default=REPO_ROOT / "apps" / "web" / "dist", alias="KAI_WEB_DIST")
+    data_dir: Path = Field(default=DEFAULT_DATA_DIR, alias="KAI_DATA_DIR")
+    web_dist: Path = Field(default=DEFAULT_WEB_DIST, alias="KAI_WEB_DIST")
 
     # IA
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KAI AI</title>
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body { display: grid; place-items: center; background: #05070b; color: #e8eef7;
+             font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; }
+      .wrap { text-align: center; padding: 24px; max-width: 520px; }
+      .orb { width: 96px; height: 96px; margin: 0 auto 28px; border-radius: 9999px;
+             background: radial-gradient(circle at 35% 30%, #b8fbff, #38e1ff 25%, #2f7bff 60%, #0b1a3a 100%);
+             box-shadow: 0 0 40px rgb(47 123 255 / .55), 0 0 90px rgb(56 225 255 / .25);
+             animation: breathe 1.6s ease-in-out infinite; }
+      @keyframes breathe { 50% { transform: scale(1.08); } }
+      h1 { margin: 0; font-size: 22px; letter-spacing: .25em; font-weight: 600; }
+      p { color: #8a96a8; font-size: 14px; line-height: 1.5; }
+      .error .orb { filter: hue-rotate(150deg) saturate(1.6); animation: none; }
+      .error #msg { color: #ff5c6c; }
+      code { color: #38e1ff; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" id="wrap">
+      <div class="orb"></div>
+      <h1>KAI</h1>
+      <p id="msg">Iniciando KAI Core…</p>
+    </div>
+    <script>
+      // La app nativa llama a esta función si KAI Core no pudo iniciar.
+      window.kaiShowError = function (text) {
+        document.getElementById("wrap").classList.add("error");
+        document.getElementById("msg").innerHTML = text;
+      };
+    </script>
+  </body>
+</html>

@@ -48,6 +48,21 @@ Eventos SSE: `meta` (ids y título) → `delta`* → `done` | `error`.
 Para agregar otro proveedor: implementar `AIProvider` y registrarlo en `core/context.py`
 (`provider_factory`). KAI Core no conoce detalles de ningún proveedor fuera de esa interfaz.
 
+## App de escritorio (Fase 4b)
+
+```
+KAI AI.exe (Tauri 2, WebView2)
+  ├─ pantalla de carga local (apps/desktop/splash)
+  ├─ inicia kai-core.exe (PyInstaller: KAI Core + interfaz + voz) con KAI_PARENT_PID y KAI_SHUTDOWN_TOKEN
+  ├─ espera /api/v1/health y navega a http://127.0.0.1:8765 (misma interfaz que la versión web)
+  ├─ bandeja (Abrir/Salir), Ctrl+Alt+K, instancia única
+  └─ al salir: POST /api/v1/system/shutdown (token) → si no responde, termina el proceso
+kai-core: si la app desaparece, el watchdog lo detecta y se detiene.
+```
+
+La interfaz no usa IPC de Tauri: habla con KAI Core por HTTP como en el navegador, así que una sola
+base de código sirve para web, escritorio y, más adelante, Android.
+
 ## Automatización (Fase 4)
 
 ```

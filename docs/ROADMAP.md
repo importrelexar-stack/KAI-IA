@@ -32,10 +32,13 @@ escritura con copia de seguridad, movimiento sin sobrescritura, orden de carpeta
 papelera, apertura de archivos y apps registradas, scripts registrados con tiempo máximo, niveles por
 herramienta, confirmación desde el chat y auditoría.
 
-## Fase 4b — App de escritorio
+## ✅ Fase 4b — App de escritorio (esta versión)
 
-Empaquetado Tauri 2 con KAI Core como sidecar (PyInstaller), instalador MSI/NSIS, ícono en la bandeja,
-atajo global y voz con la ventana minimizada. Lectura de planillas Excel.
+Tauri 2 con KAI Core como sidecar (PyInstaller, incluye voz local), instalador NSIS por usuario, bandeja,
+Ctrl+Alt+K, instancia única, cierre ordenado y watchdog. Build y prueba automática en Windows.
+
+Pendiente: firma digital del instalador, actualización automática, voz/«Hey KAI» con la ventana oculta,
+lectura de planillas Excel.
 
 ## Fase 5 — Android
 

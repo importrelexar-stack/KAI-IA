@@ -1,0 +1,107 @@
+name: App de escritorio (Windows)
+
+# Construye KAI Core empaquetado (PyInstaller, con voz local) y la app Tauri con su instalador
+# NSIS; después ejecuta ambos y verifica que KAI responde.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Rust estable
+        run: rustup default stable
+
+      - name: Interfaz web
+        working-directory: apps/web
+        run: |
+          npm ci --no-fund --no-audit
+          npm run build
+
+      - name: KAI Core empaquetado (sidecar)
+        working-directory: backend
+        env:
+          KAI_SIDECAR_NAME: kai-core-x86_64-pc-windows-msvc
+        run: |
+          python -m pip install -r requirements.txt -r requirements-voice.txt "pyinstaller>=6.10,<7"
+          pyinstaller kai-core.spec --noconfirm
+          Copy-Item dist\kai-core-x86_64-pc-windows-msvc.exe ..\apps\desktop\src-tauri\binaries\
+
+      - name: Prueba del sidecar (demo, voz incluida)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:LOCALAPPDATA = "$env:RUNNER_TEMP\kai-sidecar"
+          $env:KAI_DEMO_MODE = 'true'
+          $env:KAI_PORT = '8799'
+          $p = Start-Process apps\desktop\src-tauri\binaries\kai-core-x86_64-pc-windows-msvc.exe -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 120; $i++) {
+            Start-Sleep -Milliseconds 500
+            try { if ((Invoke-RestMethod http://127.0.0.1:8799/api/v1/health).status -eq 'ok') { $ok = $true; break } } catch {}
+          }
+          if (-not $ok) { Get-ChildItem -Recurse $env:LOCALAPPDATA | Out-Host; throw "el sidecar no respondió" }
+          $page = Invoke-WebRequest http://127.0.0.1:8799/ -UseBasicParsing
+          if ($page.Content -notmatch '<div id="root">') { throw "la interfaz no viene embebida" }
+          $voice = Invoke-RestMethod http://127.0.0.1:8799/api/v1/voice/status
+          if (-not $voice.stt.installed -or -not $voice.tts.installed) { throw "los motores de voz no quedaron empaquetados" }
+          if (-not (Test-Path "$env:LOCALAPPDATA\KAI\kai.db")) { throw "los datos no están en %LOCALAPPDATA%\KAI" }
+          Write-Host "Sidecar OK (voz: $($voice.stt.name) / $($voice.tts.name))"
+          taskkill /PID $p.Id /T /F | Out-Null
+
+      - name: App Tauri + instalador NSIS
+        working-directory: apps/desktop
+        run: |
+          npm ci --no-fund --no-audit
+          npx tauri build
+
+      - name: Prueba de la app (inicia KAI Core sola)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:LOCALAPPDATA = "$env:RUNNER_TEMP\kai-app"
+          $env:KAI_DEMO_MODE = 'true'
+          $exe = Get-ChildItem apps\desktop\src-tauri\target\release\kai-desktop.exe
+          $app = Start-Process $exe.FullName -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 180; $i++) {
+            Start-Sleep -Milliseconds 500
+            try { if ((Invoke-RestMethod http://127.0.0.1:8765/api/v1/health).status -eq 'ok') { $ok = $true; break } } catch {}
+          }
+          if (-not $ok) { throw "la app no inició KAI Core" }
+          $body = @{ message = 'Hola KAI'; stream = $false } | ConvertTo-Json
+          $r = Invoke-RestMethod -Method Post http://127.0.0.1:8765/api/v1/chat -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+          if ($r.assistant_message.content -notmatch 'DEMOSTRACI') { throw "respuesta inesperada" }
+          Write-Host "App OK: KAI Core iniciado por la app y respondiendo"
+          taskkill /PID $app.Id /T /F | Out-Null
+          Get-Process kai-core -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      - name: Publicar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAI-AI-instalador-windows
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+      - name: Release desktop-latest (sólo main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release delete desktop-latest --yes --cleanup-tag || true
+          gh release create desktop-latest apps/desktop/src-tauri/target/release/bundle/nsis/*.exe \
+            --target "$GITHUB_SHA" --prerelease --title "KAI AI para Windows (último main)" \
+            --notes "Instalador generado automáticamente desde $GITHUB_SHA."

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import logging
 import platform
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -15,12 +16,14 @@ from app.agents.catalog import list_agents
 from app.api.deps import get_ctx, get_db
 from app.api.v1.settings import api_key_status
 from app.core.context import AppContext
+from app.core.errors import KaiError
 from app.models.entities import AuditLog
 from app.security.access import LOCAL_HOSTS
 from app.services.settings_service import get_preferences
 from app.services.usage_service import usage_for_day
 
 router = APIRouter(tags=["system"])
+log = logging.getLogger(__name__)
 Ctx = Annotated[AppContext, Depends(get_ctx)]
 Db = Annotated[Session, Depends(get_db)]
 
@@ -68,6 +71,18 @@ def system_status(ctx: Ctx, db: Db) -> dict:
             "android": "planned",
         },
     }
+
+
+@router.post("/system/shutdown", include_in_schema=False)
+def shutdown(request: Request) -> dict:
+    """Cierre ordenado pedido por la app de escritorio (requiere el token que ella generó)."""
+    token = getattr(request.app.state, "shutdown_token", None)
+    supplied = request.headers.get("x-kai-shutdown", "")
+    if not token or not hmac.compare_digest(supplied, token):
+        raise KaiError("No autorizado.", code="forbidden", status_code=403)
+    request.app.state.request_shutdown()
+    log.info("Cierre ordenado solicitado por la app de escritorio")
+    return {"status": "stopping"}
 
 
 @router.get("/agents", summary="Catálogo de agentes y su estado real")

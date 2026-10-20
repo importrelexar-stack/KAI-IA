@@ -127,6 +127,7 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
 
 
 def run() -> None:
+    import os
     import sys
 
     import uvicorn
@@ -139,7 +140,17 @@ def run() -> None:
     s = get_settings()
     if s.host not in ("127.0.0.1", "localhost", "::1"):
         log.warning("KAI_HOST=%s expone KAI Core fuera de este equipo. No lo publiques en Internet.", s.host)
-    uvicorn.run(create_app(s), host=s.host, port=s.port, log_level=s.log_level.lower())
+    app = create_app(s)
+    server = uvicorn.Server(uvicorn.Config(app, host=s.host, port=s.port, log_level=s.log_level.lower()))
+    # La app de escritorio pasa un token para pedir un cierre ordenado (POST /api/v1/system/shutdown).
+    app.state.shutdown_token = os.environ.get("KAI_SHUTDOWN_TOKEN") or None
+    app.state.request_shutdown = lambda: setattr(server, "should_exit", True)
+    parent = os.environ.get("KAI_PARENT_PID", "")
+    if parent.isdigit():
+        from app.core.watchdog import watch_parent
+
+        watch_parent(int(parent), app.state.request_shutdown)
+    server.run()
 
 
 if __name__ == "__main__":

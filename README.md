@@ -4,15 +4,21 @@ Asistente personal de escritorio para **Windows** (Android en camino), con Claud
 Arquitectura modular: interfaz React, núcleo local **KAI Core** (FastAPI + SQLite) y proveedores de IA
 intercambiables.
 
-> **Estado: Fases 1 (MVP), 2 (voz), 3 (memoria y agentes) y 4 (automatización de Windows) completadas.** Chat real con Claude, historial persistente,
+> **Estado: Fases 1 (MVP), 2 (voz), 3 (memoria y agentes), 4 (automatización de Windows) y 4b (app de
+> escritorio con instalador) completadas.** Chat real con Claude, historial persistente,
 > configuración segura de la clave, motor de tareas, CoworkBridge manual, núcleo visual con estados reales,
 > **conversación por voz en español de Argentina** (reconocimiento y síntesis locales, «Hey KAI» con
 > consentimiento, interrupción, dictado), **memoria persistente y proyectos**, **orquestador con agentes**
 > (memoria, planificación, búsqueda web opcional), **archivos y aplicaciones con permisos y confirmación**,
-> scripts de Windows y pruebas automatizadas. La app de escritorio (Tauri) y Android son las fases
-> siguientes.
+> scripts de Windows y pruebas automatizadas. Android es la fase siguiente.
 
-## Inicio rápido (Windows)
+## Instalar la app de escritorio (recomendado)
+
+Descargá el instalador desde el release **desktop-latest** del repositorio (o el artefacto
+`KAI-AI-instalador-windows` del workflow «App de escritorio»). No necesita Python ni Node.js. Ver
+[apps/desktop/README.md](apps/desktop/README.md).
+
+## Inicio rápido desde el código (Windows)
 
 Requisitos: **Python 3.11+**. Node.js LTS es opcional: sin Node, el instalador descarga la interfaz ya
 compilada desde GitHub.
