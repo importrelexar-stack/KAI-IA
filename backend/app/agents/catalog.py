@@ -42,9 +42,15 @@ def list_agents(prefs: Preferences) -> list[dict]:
         AgentInfo("planner", "KAI Planner", "Divide objetivos complejos en tareas con dependencias y prioridades.",
                   on, 3, _tools("planner")),
         AgentInfo("research", "KAI Research",
-                  "Busca información actual en la web (búsqueda web de Anthropic, con costo por búsqueda). "
-                  "Se activa en Configuración.",
-                  "active" if prefs.agents_enabled and prefs.web_search_enabled else "disabled", 3, ("web_search",)),
+                  "Busca información actual en la web y lee páginas (búsqueda y lectura web de Anthropic, con costo "
+                  "por uso). Se activa en Integraciones.",
+                  "active" if prefs.agents_enabled and (prefs.web_search_enabled or prefs.web_fetch_enabled)
+                  else "disabled", 3,
+                  tuple(n for n, on_ in (("web_search", prefs.web_search_enabled), ("web_fetch", prefs.web_fetch_enabled))
+                        if on_) or ("web_search", "web_fetch")),
+        AgentInfo("integrations", "KAI Integraciones",
+                  "Usa las herramientas de los servidores MCP que conectaste (calendario, correo, notas, etc.). "
+                  "Lo que no es de solo lectura pide tu autorización.", on, 6),
         AgentInfo("files", "KAI Files",
                   "Lista, busca, lee (texto, PDF, Word) y organiza archivos sólo dentro de las carpetas que autorizaste. "
                   "Lo que modifica algo pide confirmación según los permisos.", on, 4, _tools("files")),

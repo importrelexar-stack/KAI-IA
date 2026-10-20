@@ -101,6 +101,10 @@ class AnthropicProvider(AIProvider):
         tool_defs: list[dict[str, Any]] = list(tools or []) if executor else []
         if options.web_search:
             tool_defs.append({"type": "web_search_20260209", "name": "web_search", "max_uses": 5})
+        if options.web_fetch:
+            # Sólo puede abrir URLs que ya aparecen en la conversación (las da el usuario o la búsqueda).
+            tool_defs.append({"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": 5,
+                              "max_content_tokens": 30000})
         if tool_defs:
             kwargs["tools"] = tool_defs
 

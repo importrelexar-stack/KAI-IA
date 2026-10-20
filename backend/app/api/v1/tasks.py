@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import client_id, get_ctx, get_db
 from app.agents.automation_tools import run_approved
+from app.integrations import mcp_tools
 from app.automation import tasks as engine
 from app.core.state import AssistantState
 from app.core.context import AppContext
@@ -67,7 +68,10 @@ def approve_task(task_id: str, body: TaskApproval, request: Request, ctx: Ctx, d
     if body.approve and task.action:
         ctx.state.begin(AssistantState.EXECUTING, f"Ejecutando: {task.title[:60]}")
         try:
-            task = run_approved(db, task, [ctx.settings.data_dir])
+            if task.action.get("kind") == "mcp":
+                task = mcp_tools.run_approved(db, task, ctx.mcp)
+            else:
+                task = run_approved(db, task, [ctx.settings.data_dir])
         finally:
             ctx.state.end()
         audit(db, "automation.execute", target=task_id,

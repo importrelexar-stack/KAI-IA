@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api.v1 import automation, chat, cowork, devices, memory, settings as settings_api, system, tasks, voice
+from app.api.v1 import automation, chat, cowork, devices, integrations, memory, settings as settings_api, system, tasks, voice
 from app.core.config import Settings, get_settings
 from app.core.context import AppContext, ProviderFactory, default_provider_factory
 from app.core.errors import KaiError, kai_error_handler
@@ -21,6 +21,7 @@ from app.core.logging import setup_logging
 from app.core.state import EventBus, StateManager
 from app.cowork.bridge import CoworkBridge
 from app.database.session import Database
+from app.integrations.mcp_manager import McpManager, load_configs as load_mcp_configs
 from app.security.access import AccessControlMiddleware, RateLimiter, load_or_create_token
 from app.security.secrets import SecretStore
 from app.voice.base import VoiceEngineError
@@ -61,6 +62,15 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
         chat_limiter=RateLimiter(settings.chat_rate_limit_per_minute),
         provider_factory=provider_factory or default_provider_factory,
     )
+    ctx.mcp = McpManager(ctx.secrets, settings.logs_dir)
+
+    def load_mcp_configs_safe() -> list:
+        with db.SessionLocal() as s:
+            try:
+                return load_mcp_configs(s)
+            except Exception:  # noqa: BLE001 - una configuración rota no impide arrancar
+                log.exception("No se pudo leer la configuración de integraciones")
+                return []
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):  # type: ignore[no-untyped-def]
@@ -71,7 +81,9 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
             log.warning("KAI Core %s iniciado SIN clave de API: el chat real no está disponible", __version__)
         else:
             log.info("KAI Core %s iniciado. Clave de API desde: %s", __version__, source)
+        await ctx.mcp.start(load_mcp_configs_safe())
         yield
+        await ctx.mcp.stop()
         db.engine.dispose()
 
     app = FastAPI(
@@ -94,7 +106,7 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
                        allow_headers=["Content-Type", "X-KAI-Token", "Authorization"])
 
     for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router, voice.router, memory.router,
-              automation.router, devices.router):
+              automation.router, devices.router, integrations.router):
         app.include_router(r, prefix="/api/v1")
 
     _mount_frontend(app, settings.web_dist)

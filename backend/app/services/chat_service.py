@@ -17,6 +17,7 @@ from app.core.errors import KaiError, NotFoundError, ProviderNotConfiguredError
 from app.core.persona import build_system_prompt
 from app.core.state import AssistantState
 from app.agents.tools import TOOLS, ToolContext, run_tool
+from app.integrations import mcp_tools
 from app.memory.store import MemoryStore
 from app.models.entities import Attachment, Conversation, Memory, Message, utcnow
 from app.providers.base import ChatTurn, Completed, GenerationOptions, TextDelta, ToolActivity, ToolCall, ToolResult
@@ -172,7 +173,8 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
         state_started = True
         options = GenerationOptions(model=prefs.model, max_tokens=prefs.max_tokens, effort=prefs.effort,
                                     use_fallbacks=prefs.use_fallbacks, max_tool_iterations=prefs.max_tool_iterations,
-                                    web_search=prefs.agents_enabled and prefs.web_search_enabled)
+                                    web_search=prefs.agents_enabled and prefs.web_search_enabled,
+                                    web_fetch=prefs.agents_enabled and prefs.web_fetch_enabled)
         tool_ctx = ToolContext(db=db, memory=memory, conversation_id=conv.id,
                                auto_approve_memory=prefs.memory_auto_approve, publish=ctx.bus.publish,
                                protected=[ctx.settings.data_dir])
@@ -180,7 +182,10 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
         async def execute(call: ToolCall) -> ToolResult:
             ctx.state.begin(AssistantState.EXECUTING, f"Usando {call.name}")
             try:
-                outcome = run_tool(tool_ctx, call.name, call.input)
+                if call.name.startswith("mcp_") and ctx.mcp is not None:
+                    outcome = await mcp_tools.handle(ctx.mcp, tool_ctx, call.name, call.input)
+                else:
+                    outcome = run_tool(tool_ctx, call.name, call.input)
             finally:
                 ctx.state.end()
             audit(db, "agent.tool", target=call.name, details={"ok": outcome.ok, "summary": outcome.summary[:200]},
@@ -189,6 +194,7 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
                               task_id=outcome.task_id)
 
         tools_on = prefs.agents_enabled
+        tool_defs = [t.definition() for t in TOOLS] + (ctx.mcp.definitions() if ctx.mcp is not None else [])
         chunks: list[str] = []
         tool_events: list[dict[str, Any]] = []
         completed: Completed | None = None
@@ -196,7 +202,7 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
                                      preferences=[m.content for m in preferences])
         try:
             async for ev in provider.stream_chat(system=system, turns=turns, options=options,
-                                                 tools=[t.definition() for t in TOOLS] if tools_on else None,
+                                                 tools=tool_defs if tools_on else None,
                                                  executor=execute if tools_on else None):
                 if isinstance(ev, TextDelta):
                     chunks.append(ev.text)

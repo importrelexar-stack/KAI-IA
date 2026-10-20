@@ -225,3 +225,16 @@ async def test_wire_tool_loop_stops_at_limit():
     text = "".join(e.text for e in events if isinstance(e, TextDelta))
     assert "límite de pasos" in text
     assert isinstance(events[-1], Completed)
+
+
+async def test_wire_web_tools_are_declared():
+    bodies: list[dict] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(200, content=_message_stream(["ok"]), headers={"content-type": "text/event-stream"})
+
+    await _run(_provider(handler), web_search=True, web_fetch=True)
+    tools = {t["name"]: t for t in bodies[0]["tools"]}
+    assert tools["web_search"]["type"] == "web_search_20260209"
+    assert tools["web_fetch"]["type"] == "web_fetch_20260209" and tools["web_fetch"]["max_uses"] == 5

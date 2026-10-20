@@ -119,6 +119,7 @@ export interface Preferences {
   memory_auto_approve: boolean;
   agents_enabled: boolean;
   web_search_enabled: boolean;
+  web_fetch_enabled: boolean;
   max_tool_iterations: number;
 }
 
@@ -424,3 +425,76 @@ export const devicesApi = {
   list: () => api<Device[]>("/devices"),
   revoke: (id: string) => api<Device>(`/devices/${id}`, { method: "DELETE" }),
 };
+
+// ---- Integraciones (Fase 6) ----
+
+export type ToolLevel = "allow" | "ask" | "deny";
+
+export interface McpTool {
+  name: string;
+  description: string;
+  read_only: boolean;
+  destructive: boolean;
+  level: ToolLevel;
+  custom: boolean;
+}
+
+export interface McpServer {
+  id: string;
+  name: string;
+  transport: "stdio" | "http";
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+  secret_env: string[];
+  url: string;
+  has_token: boolean;
+  enabled: boolean;
+  status: "connecting" | "connected" | "error" | "stopped";
+  error: string | null;
+  server_info: string;
+  tools: McpTool[];
+}
+
+export interface IntegrationsOverview {
+  web: { web_search_enabled: boolean; web_fetch_enabled: boolean };
+  mcp: McpServer[];
+  secure_storage: boolean;
+}
+
+export interface McpServerIn {
+  name: string;
+  transport: "stdio" | "http";
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  secret_env?: Record<string, string>;
+  url?: string;
+  token?: string;
+}
+
+export const integrationsApi = {
+  overview: () => api<IntegrationsOverview>("/integrations"),
+  setWeb: (body: Partial<IntegrationsOverview["web"]>) => api<IntegrationsOverview["web"]>("/integrations/web", { method: "PUT", body: JSON.stringify(body) }),
+  add: (body: McpServerIn) => api<McpServer>("/integrations/mcp", { method: "POST", body: JSON.stringify(body) }),
+  update: (id: string, body: { enabled?: boolean; name?: string }) => api<McpServer>(`/integrations/mcp/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  reconnect: (id: string) => api<McpServer>(`/integrations/mcp/${id}/reconnect`, { method: "POST" }),
+  setLevel: (id: string, tool: string, level: ToolLevel | "default") =>
+    api<McpServer>(`/integrations/mcp/${id}/tools/${encodeURIComponent(tool)}`, { method: "PUT", body: JSON.stringify({ level }) }),
+  remove: (id: string) => api<void>(`/integrations/mcp/${id}`, { method: "DELETE" }),
+  setSecrets: (id: string, body: { secret_env?: Record<string, string>; token?: string }) =>
+    api<McpServer>(`/integrations/mcp/${id}/secrets`, { method: "PUT", body: JSON.stringify(body) }),
+};
+
+/** "CLAVE=valor" por línea → objeto. Ignora líneas vacías; lanza error si una línea no tiene "=". */
+export function parseEnvLines(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const i = line.indexOf("=");
+    if (i <= 0) throw new Error(`Línea inválida (falta =): ${line}`);
+    out[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  }
+  return out;
+}

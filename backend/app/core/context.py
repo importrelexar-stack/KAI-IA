@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 from app.core.config import Settings
 from app.core.state import EventBus, StateManager
@@ -34,6 +34,7 @@ class AppContext:
     chat_limiter: RateLimiter
     provider_factory: ProviderFactory = default_provider_factory
     started_at: float = field(default_factory=time.time)
+    mcp: Any = None  # McpManager (Fase 6)
     _provider: AIProvider | None = None
     _memory: MemoryStore | None = None
 

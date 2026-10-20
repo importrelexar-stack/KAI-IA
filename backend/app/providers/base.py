@@ -31,6 +31,7 @@ class GenerationOptions:
     request_token_budget: int = 200_000
     timeout_seconds: float = 240.0
     web_search: bool = False
+    web_fetch: bool = False
 
 
 @dataclass(frozen=True)

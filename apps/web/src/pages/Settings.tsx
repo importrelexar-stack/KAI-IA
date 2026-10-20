@@ -119,6 +119,7 @@ export function SettingsPage() {
             ["memory_auto_approve", "Aprobar automáticamente lo que KAI propone recordar", "Si está apagado, cada propuesta espera tu aprobación en la pantalla Memoria."],
             ["agents_enabled", "Permitir que KAI use herramientas (memoria, tareas, planes, proyectos)", "Sin herramientas, KAI sólo conversa."],
             ["web_search_enabled", "Búsqueda web (KAI Research)", "Usa la búsqueda web de Anthropic: tiene costo adicional por búsqueda (máx. 5 por respuesta)."],
+            ["web_fetch_enabled", "Lectura de páginas web", "Claude puede abrir las páginas que le pases o que encuentre la búsqueda (máx. 5 por respuesta, con costo por tokens)."],
           ] as const).map(([key, label, help]) => (
             <label key={key} className="flex items-start gap-2">
               <input type="checkbox" className="mt-1" checked={prefs[key]} onChange={(e) => {

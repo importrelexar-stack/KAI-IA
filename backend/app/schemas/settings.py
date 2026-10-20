@@ -31,6 +31,7 @@ class Preferences(BaseModel):
     memory_auto_approve: bool = False
     agents_enabled: bool = True
     web_search_enabled: bool = False
+    web_fetch_enabled: bool = False
     max_tool_iterations: int = Field(default=6, ge=1, le=15)
 
     @field_validator("model")
@@ -61,6 +62,7 @@ class PreferencesUpdate(BaseModel):
     memory_auto_approve: bool | None = None
     agents_enabled: bool | None = None
     web_search_enabled: bool | None = None
+    web_fetch_enabled: bool | None = None
     max_tool_iterations: int | None = Field(default=None, ge=1, le=15)
 
     @field_validator("model")
