@@ -31,10 +31,19 @@ def decode_audio(data: bytes):  # type: ignore[no-untyped-def]
     """
     import numpy as np
 
-    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+    is_wav = data[:4] == b"RIFF" and data[8:12] == b"WAVE"
+    if is_wav:
         with wave.open(io.BytesIO(data)) as w:
             channels, width, rate = w.getnchannels(), w.getsampwidth(), w.getframerate()
             raw = w.readframes(w.getnframes())
+    if is_wav and rate != SAMPLE_RATE:
+        # Remuestreo con filtro antialiasing (libswresample); la interpolación lineal distorsiona
+        # las consonantes y empeora el reconocimiento.
+        try:
+            return _decode_with_av(data)
+        except Exception:  # noqa: BLE001 - sin PyAV: se usa el remuestreo simple
+            pass
+    if is_wav:
         if width == 2:
             pcm = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
         elif width == 4:
@@ -50,7 +59,12 @@ def decode_audio(data: bytes):  # type: ignore[no-untyped-def]
             pcm = np.interp(np.linspace(0, len(pcm) - 1, n), np.arange(len(pcm)), pcm).astype(np.float32)
         return pcm
 
+    return _decode_with_av(data)
+
+
+def _decode_with_av(data: bytes):  # type: ignore[no-untyped-def]
     import av
+    import numpy as np
 
     chunks = []
     with av.open(io.BytesIO(data)) as container:

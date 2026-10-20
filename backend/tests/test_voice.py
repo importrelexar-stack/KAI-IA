@@ -213,3 +213,22 @@ def test_decode_audio_wav_and_compressed():
             c.mux(p)
     pcm = decode_audio(out.getvalue())
     assert 15000 <= len(pcm) <= 17000
+
+
+def test_resampling_filters_aliasing():
+    """Un tono de 10 kHz no existe a 16 kHz: debe filtrarse, no plegarse como ruido audible."""
+    np = pytest.importorskip("numpy")
+    pytest.importorskip("av")
+    from app.voice.whisper_stt import decode_audio
+
+    rate = 22050
+    tone = (0.5 * np.sin(2 * np.pi * 10_000 * np.arange(rate) / rate) * 32767).astype("<i2")
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(tone.tobytes())
+    pcm = decode_audio(buf.getvalue())
+    assert abs(len(pcm) - 16000) < 200
+    assert float(np.sqrt(np.mean(pcm[1000:-1000] ** 2))) < 0.05  # la interpolación lineal deja ~0.3

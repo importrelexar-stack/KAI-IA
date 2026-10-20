@@ -40,4 +40,7 @@ def test_roundtrip_piper_to_whisper(tmp_path: Path):
     text = _norm(t.text)
     print("Transcripción:", t.text)
     assert t.language == "es" and t.duration_seconds > 1
-    assert "tareas" in text and "manana" in text
+    # Piper agrega variación aleatoria en cada síntesis: se exige la mayoría de las palabras clave.
+    keywords = ["hola", "tareas", "tengo", "pendientes", "manana"]
+    hits = [k for k in keywords if k in text]
+    assert len(hits) >= 4, f"palabras reconocidas {hits} en «{t.text}»"
