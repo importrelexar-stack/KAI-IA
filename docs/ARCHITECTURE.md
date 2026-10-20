@@ -48,6 +48,19 @@ Eventos SSE: `meta` (ids y título) → `delta`* → `done` | `error`.
 Para agregar otro proveedor: implementar `AIProvider` y registrarlo en `core/context.py`
 (`provider_factory`). KAI Core no conoce detalles de ningún proveedor fuera de esa interfaz.
 
+## Integraciones y rutinas (Fase 6)
+
+- `app/integrations/mcp_manager.py`: `McpManager` mantiene una `McpConnection` por servidor MCP. Cada
+  conexión es una tarea asyncio que abre la sesión (stdio o HTTP streamable con el SDK oficial `mcp`),
+  lista las herramientas y atiende las llamadas desde una cola (los contextos de MCP se abren y cierran
+  en la misma tarea). Configuración en `settings.mcp_servers`; secretos en el almacén de credenciales.
+- `app/integrations/mcp_tools.py`: el ejecutor de herramientas del chat deriva los nombres `mcp_*` acá:
+  permitir → llamada directa; preguntar → tarea `awaiting_approval` con `action.kind = "mcp"`, que el
+  endpoint de aprobación ejecuta (desde su hilo, en el loop de KAI con `run_coroutine_threadsafe`).
+- `app/routines/`: `schedule.py` (horarios y próxima ejecución en hora local con DST) y `runner.py`
+  (planificador cada 30 s que llama a `stream_chat` con la conversación propia de cada rutina).
+- Web: `web_search_20260209` y `web_fetch_20260209` son herramientas del servidor de Anthropic.
+
 ## App de escritorio (Fase 4b)
 
 ```
