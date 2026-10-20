@@ -25,4 +25,8 @@ Los registros están en `data\logs\kai.log` (aplicación) y `data\logs\server.er
 | Motor local «No instalado» | Falló la instalación de faster-whisper/piper-tts | Ejecutá `backend\.venv\Scripts\python -m pip install -r backend\requirements-voice.txt` y mirá el error. |
 | La voz suena en otro dispositivo | Salida predeterminada de Windows | Elegí la salida en Voz → Dispositivos (Chrome/Edge). |
 | Manos libres no se activa | Falta consentimiento o modelo Whisper | Aceptá el aviso y descargá el modelo de reconocimiento. |
+| KAI dice que guardó algo pero no aparece en la memoria | Las propuestas esperan aprobación | Pantalla Memoria → «Propuestas de KAI» → Aprobar. |
+| «Por seguridad, KAI no guarda contraseñas…» | El texto parece una clave o tarjeta | Es intencional: no guardes secretos en la memoria. |
+| «Me detuve porque alcancé el límite de pasos» | Tarea compleja con muchas herramientas | Pedile que siga, o subí «Máximo de pasos» en Configuración. |
+| Estado del sistema muestra «fts5: false» | El SQLite de tu Python no trae FTS5 | La memoria funciona con búsqueda simple; actualizá Python desde python.org. |
 | Base de datos corrupta | Corte de energía durante escritura | Detené KAI, renombrá `data\kai.db` (se crea una nueva al iniciar). |

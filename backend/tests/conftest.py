@@ -16,6 +16,9 @@ from app.providers.base import (
     GenerationOptions,
     ProviderEvent,
     TextDelta,
+    ToolActivity,
+    ToolCall,
+    ToolExecutor,
     Usage,
     ValidationResult,
 )
@@ -30,8 +33,10 @@ class FakeProvider(AIProvider):
     name = "fake"
 
     def __init__(self, api_key: str | None, *, reply: str = "Hola, soy KAI.", stop_reason: str = "end_turn",
-                 error: Exception | None = None) -> None:
+                 error: Exception | None = None, tool_script: list[tuple[str, dict]] | None = None) -> None:
         self.api_key = api_key
+        self.tool_script = tool_script or []
+        self.tool_results: list = []
         self.reply = reply
         self.stop_reason = stop_reason
         self.error = error
@@ -41,11 +46,17 @@ class FakeProvider(AIProvider):
     def configured(self) -> bool:
         return self.api_key is not None
 
-    async def stream_chat(self, *, system: str, turns: list[ChatTurn],
-                          options: GenerationOptions) -> AsyncIterator[ProviderEvent]:
-        self.calls.append({"system": system, "turns": turns, "options": options})
+    async def stream_chat(self, *, system: str, turns: list[ChatTurn], options: GenerationOptions,
+                          tools: list[dict] | None = None,
+                          executor: ToolExecutor | None = None) -> AsyncIterator[ProviderEvent]:
+        self.calls.append({"system": system, "turns": turns, "options": options, "tools": tools})
         if self.error:
             raise self.error
+        for i, (name, args) in enumerate(self.tool_script):
+            assert executor is not None, "las herramientas están desactivadas"
+            result = await executor(ToolCall(id=f"call_{i}", name=name, input=args))
+            self.tool_results.append(result)
+            yield ToolActivity(name=name, summary=result.summary, ok=result.ok)
         for part in self.reply.split(" "):
             yield TextDelta(text=part + " ")
         yield Completed(model=options.model, stop_reason=self.stop_reason,

@@ -16,11 +16,14 @@ Pendiente para más adelante: streaming de transcripción y de síntesis (menor 
 de activación dedicado (más liviano que Whisper continuo), voz con la ventana minimizada (requiere la app
 de escritorio Tauri).
 
-## Fase 3 — Memoria y agentes
+## ✅ Fase 3 — Memoria y agentes (esta versión)
 
-Memoria de preferencias, proyectos y operativa con controles de privacidad; búsqueda semántica
-(embeddings locales + SQLite); orquestador con tool use de Claude; agentes Planner, Memory, Research y
-Code con límites de tiempo, cancelación y presupuesto por tarea.
+Memoria de preferencias, datos y proyectos con aprobación y controles de privacidad; búsqueda local FTS5;
+proyectos con decisiones, avances y próximos pasos; orquestador con tool use (Memory, Planner, Research
+opcional); tareas con dependencias; límites de pasos, tokens y tiempo; migraciones automáticas.
+
+Pendiente: búsqueda semántica con embeddings locales (la interfaz está preparada), agente Code (pasa a la
+Fase 4 junto con el acceso a archivos).
 
 ## Fase 4 — Automatización Windows
 

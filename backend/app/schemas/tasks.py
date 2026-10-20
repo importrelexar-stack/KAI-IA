@@ -13,6 +13,8 @@ class TaskCreate(BaseModel):
     description: str = Field(default="", max_length=10_000)
     priority: int = Field(default=2, ge=1, le=3)
     requires_approval: bool = False
+    project_id: str | None = Field(default=None, max_length=32)
+    depends_on: list[str] = Field(default_factory=list, max_length=30)
 
 
 class TaskTransition(BaseModel):
@@ -41,5 +43,8 @@ class TaskOut(BaseModel):
     error: str | None
     approvals: list[dict[str, Any]]
     history: list[dict[str, Any]]
+    project_id: str | None = None
+    depends_on: list[str] = []
+    created_by: str = "user"
     created_at: datetime
     updated_at: datetime

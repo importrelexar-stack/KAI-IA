@@ -112,6 +112,31 @@ export function SettingsPage() {
         </form>
       </Card>
 
+      <Card title="Memoria y agentes">
+        <div className="space-y-3 text-sm">
+          {([
+            ["memory_enabled", "Usar la memoria en las conversaciones", "KAI tiene en cuenta tus preferencias y recupera datos relevantes."],
+            ["memory_auto_approve", "Aprobar automáticamente lo que KAI propone recordar", "Si está apagado, cada propuesta espera tu aprobación en la pantalla Memoria."],
+            ["agents_enabled", "Permitir que KAI use herramientas (memoria, tareas, planes, proyectos)", "Sin herramientas, KAI sólo conversa."],
+            ["web_search_enabled", "Búsqueda web (KAI Research)", "Usa la búsqueda web de Anthropic: tiene costo adicional por búsqueda (máx. 5 por respuesta)."],
+          ] as const).map(([key, label, help]) => (
+            <label key={key} className="flex items-start gap-2">
+              <input type="checkbox" className="mt-1" checked={prefs[key]} onChange={(e) => {
+                const next = { ...prefs, [key]: e.target.checked };
+                setPrefs(next);
+                void run(() => put("/settings", { [key]: e.target.checked }), "Preferencias guardadas.");
+              }} />
+              <span>{label}<span className="block text-xs text-muted">{help}</span></span>
+            </label>
+          ))}
+          <label className="block max-w-xs">Máximo de pasos de herramientas por respuesta
+            <input type="number" min={1} max={15} className="field mt-1" value={prefs.max_tool_iterations}
+              onChange={(e) => setPrefs({ ...prefs, max_tool_iterations: Number(e.target.value) })}
+              onBlur={() => void run(() => put("/settings", { max_tool_iterations: prefs.max_tool_iterations }), "Preferencias guardadas.")} />
+          </label>
+        </div>
+      </Card>
+
       <Card title="Privacidad">
         <p className="text-sm text-muted">Todo el historial se guarda localmente en <code>data/kai.db</code>. Podés eliminar conversaciones individuales desde Historial o borrar todo acá.</p>
         <button className="btn btn-danger mt-3" onClick={() => {

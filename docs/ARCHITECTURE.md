@@ -48,6 +48,27 @@ Eventos SSE: `meta` (ids y título) → `delta`* → `done` | `error`.
 Para agregar otro proveedor: implementar `AIProvider` y registrarlo en `core/context.py`
 (`provider_factory`). KAI Core no conoce detalles de ningún proveedor fuera de esa interfaz.
 
+## Memoria y agentes (Fase 3)
+
+```
+Mensaje → preferencias aprobadas (system) + memorias relevantes (FTS5/BM25, bloque <memoria_relevante>)
+        → Claude con herramientas ──tool_use──► run_tool (validación Pydantic) ──► SQLite
+                  ▲                                                   │
+                  └────────────── tool_result ◄──────────────────────┘   (hasta N pasos)
+```
+
+- `memory/store.py`: memorias con índice FTS5 (`unicode61 remove_diacritics 2`, sin acentos); si SQLite
+  no trae FTS5 se usa búsqueda simple. La interfaz `MemoryStore.search` permite sumar embeddings después.
+- `memory/projects.py`: proyectos con registro de decisiones/avances, archivos y próximos pasos.
+- `agents/tools.py`: herramientas por agente (Memory, Planner) con esquemas autocontenidos
+  (`additionalProperties: false`). Lo que manda el modelo se valida antes de ejecutar; los errores vuelven
+  como `tool_result` con `is_error`. Ninguna herramienta borra datos ni sale del equipo.
+- `providers/anthropic_provider.py`: bucle de tool use con streaming; reenvía el contenido del asistente
+  tal cual (incluye bloques de pensamiento) y maneja `pause_turn` (búsqueda web del servidor). Corta por
+  pasos (`max_tool_iterations`), tokens por solicitud o tiempo, avisando al usuario.
+- Estado `executing` en el núcleo visual mientras corre una herramienta; auditoría `agent.tool`.
+- `database/migrations.py`: agrega columnas nuevas y el índice FTS5 a bases existentes.
+
 ## Voz
 
 ```

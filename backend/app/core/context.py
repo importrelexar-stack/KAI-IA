@@ -9,6 +9,7 @@ from typing import Callable
 from app.core.config import Settings
 from app.core.state import EventBus, StateManager
 from app.database.session import Database
+from app.memory.store import MemoryStore
 from app.providers.anthropic_provider import AnthropicProvider
 from app.providers.base import AIProvider
 from app.providers.demo_provider import DemoProvider
@@ -34,6 +35,13 @@ class AppContext:
     provider_factory: ProviderFactory = default_provider_factory
     started_at: float = field(default_factory=time.time)
     _provider: AIProvider | None = None
+    _memory: MemoryStore | None = None
+
+    @property
+    def memory(self) -> MemoryStore:
+        if self._memory is None:
+            self._memory = MemoryStore(self.db.features.get("fts5", False))
+        return self._memory
 
     @property
     def demo_mode(self) -> bool:

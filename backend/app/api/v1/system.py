@@ -45,7 +45,7 @@ def system_status(ctx: Ctx, db: Db) -> dict:
         "uptime_seconds": int(time.time() - ctx.started_at),
         "platform": f"{platform.system()} {platform.release()}",
         "python": platform.python_version(),
-        "database": {"ok": db_ok},
+        "database": {"ok": db_ok, "fts5": ctx.db.features.get("fts5", False)},
         "assistant": ctx.state.snapshot(),
         "provider": {"name": provider.name, "configured": provider.configured, "model": prefs.model,
                      "effort": prefs.effort, "demo_mode": ctx.demo_mode},
@@ -61,7 +61,8 @@ def system_status(ctx: Ctx, db: Db) -> dict:
             "tasks": "available",
             "cowork_bridge": "manual",
             "voice": "available",
-            "agents": "planned",
+            "agents": "available" if prefs.agents_enabled else "disabled",
+            "memory": "available" if prefs.memory_enabled else "disabled",
             "automation": "planned",
             "files": "planned",
             "android": "planned",
@@ -70,8 +71,8 @@ def system_status(ctx: Ctx, db: Db) -> dict:
 
 
 @router.get("/agents", summary="Catálogo de agentes y su estado real")
-def agents() -> list[dict]:
-    return list_agents()
+def agents(db: Db) -> list[dict]:
+    return list_agents(get_preferences(db))
 
 
 @router.get("/audit", summary="Registro de auditoría")

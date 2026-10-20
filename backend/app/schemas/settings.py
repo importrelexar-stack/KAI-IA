@@ -22,10 +22,16 @@ class Preferences(BaseModel):
     # Voz (Fase 2)
     voice_stt_engine: Literal["local", "browser"] = "local"
     voice_tts_engine: Literal["local", "browser"] = "local"
-    whisper_model: Literal["tiny", "base", "small"] = "base"
+    whisper_model: Literal["tiny", "base", "small"] = "small"
     piper_voice: Literal["es_AR-daniela-high", "es_MX-claude-high", "es_ES-davefx-medium"] = "es_AR-daniela-high"
     voice_auto_speak: bool = True
     voice_handsfree_consent: bool = False
+    # Memoria y agentes (Fase 3)
+    memory_enabled: bool = True
+    memory_auto_approve: bool = False
+    agents_enabled: bool = True
+    web_search_enabled: bool = False
+    max_tool_iterations: int = Field(default=6, ge=1, le=15)
 
     @field_validator("model")
     @classmethod
@@ -51,6 +57,11 @@ class PreferencesUpdate(BaseModel):
     piper_voice: Literal["es_AR-daniela-high", "es_MX-claude-high", "es_ES-davefx-medium"] | None = None
     voice_auto_speak: bool | None = None
     voice_handsfree_consent: bool | None = None
+    memory_enabled: bool | None = None
+    memory_auto_approve: bool | None = None
+    agents_enabled: bool | None = None
+    web_search_enabled: bool | None = None
+    max_tool_iterations: int | None = Field(default=None, ge=1, le=15)
 
     @field_validator("model")
     @classmethod

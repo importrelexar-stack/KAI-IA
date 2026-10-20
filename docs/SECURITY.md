@@ -19,6 +19,8 @@ externo manipule al asistente; y gastos descontrolados.
 | Costos | Presupuesto diario de tokens, límite de mensajes por minuto, registro de consumo, caché de prompt, esfuerzo bajo por defecto. |
 | Archivos importados | Nombres saneados (sin rutas, sin nombres reservados de Windows), confinados a `data/cowork/<id>/`, sin sobrescritura, tamaño máximo configurable. Descarga sólo de archivos registrados. |
 | Micrófono y privacidad | El micrófono sólo se abre al tocar «Hablar» o con «manos libres» activado tras un consentimiento explícito (revocable), con indicador visible, y se cierra al salir de la pantalla. Manos libres exige reconocimiento local: el audio no sale del equipo y sólo lo que empieza con «Hey KAI» llega a Claude. El audio nunca se guarda. El reconocimiento del navegador (opcional) se identifica como servicio en la nube. |
+| Memoria | Sólo lo aprobado por el usuario se usa; lo que propone KAI queda pendiente. Se rechazan contraseñas, claves y números de tarjeta. Todo es consultable, editable y eliminable (individual o total). La memoria se inyecta como datos marcados, no como instrucciones. |
+| Herramientas del orquestador | Entradas validadas con esquemas estrictos; herramientas sin efectos destructivos ni acceso al sistema; límite de pasos, tokens y tiempo por respuesta; auditoría de cada uso; tareas sensibles creadas por KAI requieren autorización. La búsqueda web está desactivada por defecto. |
 | Validación | Pydantic en todas las entradas con límites de tamaño; errores uniformes sin trazas internas. |
 | Trazabilidad | `audit_log` para cambios de configuración, clave, tareas, Cowork, borrados y errores de chat. |
 

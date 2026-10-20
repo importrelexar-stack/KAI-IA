@@ -23,17 +23,21 @@ def _publish(ctx: AppContext, task: Task) -> None:
 
 
 @router.get("/tasks", response_model=list[TaskOut], summary="Listar tareas (ordenadas por prioridad)")
-def list_tasks(db: Db, status: TaskStatusLiteral | None = None, limit: int = 100) -> list[Task]:
+def list_tasks(db: Db, status: TaskStatusLiteral | None = None, project_id: str | None = None,
+               limit: int = 100) -> list[Task]:
     stmt = select(Task).order_by(Task.priority.asc(), Task.created_at.desc()).limit(max(1, min(limit, 500)))
     if status:
         stmt = stmt.where(Task.status == status)
+    if project_id:
+        stmt = stmt.where(Task.project_id == project_id)
     return list(db.execute(stmt).scalars())
 
 
 @router.post("/tasks", response_model=TaskOut, status_code=201, summary="Registrar una tarea")
 def create_task(body: TaskCreate, request: Request, ctx: Ctx, db: Db) -> Task:
     task = engine.create_task(db, title=body.title.strip(), description=body.description, priority=body.priority,
-                              requires_approval=body.requires_approval)
+                              requires_approval=body.requires_approval, project_id=body.project_id,
+                              depends_on=body.depends_on)
     audit(db, "task.create", target=task.id, client=client_id(request))
     _publish(ctx, task)
     return task

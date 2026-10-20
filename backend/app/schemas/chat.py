@@ -30,6 +30,7 @@ class MessageOut(BaseModel):
     stop_reason: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
+    tool_events: list[dict] | None = None
     created_at: datetime
 
 

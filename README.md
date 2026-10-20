@@ -4,12 +4,13 @@ Asistente personal de escritorio para **Windows** (Android en camino), con Claud
 Arquitectura modular: interfaz React, núcleo local **KAI Core** (FastAPI + SQLite) y proveedores de IA
 intercambiables.
 
-> **Estado: Fase 1 (MVP) y Fase 2 (voz) completadas.** Chat real con Claude, historial persistente,
+> **Estado: Fases 1 (MVP), 2 (voz) y 3 (memoria y agentes) completadas.** Chat real con Claude, historial persistente,
 > configuración segura de la clave, motor de tareas, CoworkBridge manual, núcleo visual con estados reales,
 > **conversación por voz en español de Argentina** (reconocimiento y síntesis locales, «Hey KAI» con
-> consentimiento, interrupción, dictado), scripts de Windows y pruebas automatizadas. Memoria avanzada,
-> agentes especializados, automatización de Windows y Android son fases siguientes y la interfaz las
-> muestra como **funciones futuras**.
+> consentimiento, interrupción, dictado), **memoria persistente y proyectos**, **orquestador con agentes**
+> (memoria, planificación, búsqueda web opcional), scripts de Windows y pruebas automatizadas.
+> Automatización de Windows (archivos, apps) y Android son fases siguientes y la interfaz las muestra
+> como **funciones futuras**.
 
 ## Inicio rápido (Windows)
 
@@ -41,12 +42,25 @@ Después, en **Configuración**, cargá tu clave de API de Anthropic (o ponela e
 > [console.anthropic.com](https://console.anthropic.com) con facturación propia. Sin clave, KAI inicia
 > igual e indica que el chat real no está disponible.
 
+## Memoria y agentes (Fase 3)
+
+- **Memoria**: preferencias (siempre presentes), datos y notas de proyectos (se recuperan por relevancia
+  con búsqueda local SQLite FTS5). Todo se puede ver, editar y borrar en la pantalla **Memoria**.
+- **Lo que KAI propone recordar queda pendiente** hasta que lo apruebes (o activás la aprobación
+  automática). KAI rechaza guardar contraseñas, claves o números de tarjeta.
+- **Proyectos**: objetivo, estado, próximos pasos, decisiones y avances, tareas y notas vinculadas.
+- **Orquestador**: Claude decide qué herramientas usar — buscar/proponer memoria, listar/crear tareas,
+  **dividir objetivos en planes con dependencias**, crear y actualizar proyectos. Lo que hizo se ve en el
+  chat como acciones. Límite configurable de pasos por respuesta, presupuesto de tokens y tiempo máximo.
+- **KAI Research** (opcional, con costo): búsqueda web de Anthropic, desactivada por defecto.
+- Las bases de datos de versiones anteriores se migran solas al iniciar.
+
 ## Voz (Fase 2)
 
 - Pantalla **Voz**: tocás el núcleo o «Hablar», KAI detecta cuándo terminaste de hablar, transcribe,
   responde con Claude (respuestas breves pensadas para escuchar) y las lee en voz alta.
 - **Motores locales** (sin conexión ni costo por uso): reconocimiento con **Whisper** (faster-whisper) y
-  voz con **Piper** `es_AR-daniela-high` (Argentina). Los modelos (~145 MB + ~110 MB) se descargan desde la
+  voz con **Piper** `es_AR-daniela-high` (Argentina). Los modelos (Whisper small ~465 MB + voz ~110 MB) se descargan desde la
   pantalla Voz sólo cuando lo decidís. Alternativa: voces y reconocimiento del navegador.
 - **Interrupción**: botón, tecla `Esc`, o simplemente hablar encima en modo manos libres.
 - **Manos libres «Hey KAI»**: requiere consentimiento explícito, reconocimiento local y la pantalla

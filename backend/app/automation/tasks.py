@@ -42,8 +42,14 @@ def can_transition(current: TaskStatus, target: TaskStatus) -> bool:
 
 
 def create_task(db: Session, *, title: str, description: str = "", priority: int = 2,
-                requires_approval: bool = False) -> Task:
+                requires_approval: bool = False, project_id: str | None = None,
+                depends_on: list[str] | None = None, created_by: str = "user") -> Task:
+    deps = list(dict.fromkeys(depends_on or []))
+    for dep in deps:
+        if db.get(Task, dep) is None:
+            raise NotFoundError(f"La tarea de la que depende ({dep}) no existe.")
     task = Task(title=title, description=description, priority=priority, requires_approval=requires_approval,
+                project_id=project_id, depends_on=deps, created_by=created_by,
                 status=TaskStatus.PENDING.value, tools_used=[], approvals=[],
                 history=[{"status": TaskStatus.PENDING.value, "at": utcnow().isoformat(), "note": "creada"}])
     db.add(task)
@@ -65,6 +71,11 @@ def transition(db: Session, task_id: str, target: TaskStatus, *, note: str | Non
     if not can_transition(current, target):
         raise InvalidTransitionError(f"No se puede pasar de '{current.value}' a '{target.value}'.")
 
+    if target == TaskStatus.RUNNING and task.depends_on:
+        pending = [d for d in task.depends_on
+                   if (dep := db.get(Task, d)) is not None and dep.status != TaskStatus.COMPLETED.value]
+        if pending:
+            raise InvalidTransitionError("Primero hay que completar las tareas de las que depende.")
     if target == TaskStatus.RUNNING and task.requires_approval:
         approvals = task.approvals or []
         approved = bool(approvals) and approvals[-1].get("decision") == "approved"

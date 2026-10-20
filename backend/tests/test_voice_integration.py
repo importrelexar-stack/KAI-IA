@@ -26,7 +26,7 @@ def _norm(s: str) -> str:
 def test_roundtrip_piper_to_whisper(tmp_path: Path):
     models = Path(os.environ.get("KAI_VOICE_MODELS_DIR", tmp_path))
     tts = PiperTTS(models, "es_AR-daniela-high")
-    stt = WhisperSTT(models, "base")
+    stt = WhisperSTT(models, "small")
     if not tts.model_ready():
         tts.download()
     if not stt.model_ready():

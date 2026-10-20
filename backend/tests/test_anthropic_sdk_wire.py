@@ -134,3 +134,94 @@ async def test_wire_auth_error_is_reported():
 
     result = await _provider(handler).validate()
     assert result.ok is False and "401" in result.message
+
+
+def _tool_use_stream(tool_id: str, name: str, args: dict) -> bytes:
+    return _sse([
+        ("message_start", {"type": "message_start", "message": {
+            "id": "msg_t", "type": "message", "role": "assistant", "model": "claude-opus-5-5", "content": [],
+            "stop_reason": None, "stop_sequence": None, "usage": {"input_tokens": 50, "output_tokens": 1}}}),
+        ("content_block_start", {"type": "content_block_start", "index": 0,
+                                 "content_block": {"type": "text", "text": ""}}),
+        ("content_block_delta", {"type": "content_block_delta", "index": 0,
+                                 "delta": {"type": "text_delta", "text": "Reviso tus tareas."}}),
+        ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+        ("content_block_start", {"type": "content_block_start", "index": 1, "content_block": {
+            "type": "tool_use", "id": tool_id, "name": name, "input": {}}}),
+        ("content_block_delta", {"type": "content_block_delta", "index": 1,
+                                 "delta": {"type": "input_json_delta", "partial_json": json.dumps(args)}}),
+        ("content_block_stop", {"type": "content_block_stop", "index": 1}),
+        ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "tool_use", "stop_sequence": None},
+                           "usage": {"output_tokens": 20}}),
+        ("message_stop", {"type": "message_stop"}),
+    ])
+
+
+async def test_wire_tool_loop():
+    from app.providers.base import ToolActivity, ToolCall, ToolResult
+
+    bodies: list[dict] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        body = json.loads(request.content)
+        bodies.append(body)
+        if len(bodies) == 1:
+            content = _tool_use_stream("toolu_1", "listar_tareas", {"estado": "pending"})
+        else:
+            content = _message_stream(["Tenés 2 tareas."])
+        return httpx2.Response(200, headers={"content-type": "text/event-stream"}, content=content)
+
+    calls: list[ToolCall] = []
+
+    async def executor(call: ToolCall) -> ToolResult:
+        calls.append(call)
+        return ToolResult(content='[{"titulo": "A"}, {"titulo": "B"}]', summary="Consultó tareas: 2")
+
+    tools = [{"name": "listar_tareas", "description": "d", "input_schema": {"type": "object", "properties": {}}}]
+    p = _provider(handler)
+    events = [ev async for ev in p.stream_chat(
+        system="s", turns=[ChatTurn("user", "¿qué tengo?")],
+        options=GenerationOptions(model="claude-opus-5-5", effort="low"), tools=tools, executor=executor)]
+
+    assert calls == [ToolCall(id="toolu_1", name="listar_tareas", input={"estado": "pending"})]
+    assert [type(e).__name__ for e in events if not isinstance(e, TextDelta)] == ["ToolActivity", "Completed"]
+    assert isinstance(events[-1], Completed) and events[-1].stop_reason == "end_turn"
+    assert events[-1].usage.input_tokens == 50 + 21
+    text = "".join(e.text for e in events if isinstance(e, TextDelta))
+    assert text == "Reviso tus tareas.\n\nTenés 2 tareas."
+    assert any(isinstance(e, ToolActivity) and e.summary == "Consultó tareas: 2" for e in events)
+
+    assert bodies[0]["tools"] == tools
+    second = bodies[1]["messages"]
+    assert [m["role"] for m in second] == ["user", "assistant", "user"]
+    assistant = second[1]["content"]
+    assert assistant[0] == {"type": "text", "text": "Reviso tus tareas."} or assistant[0]["text"] == "Reviso tus tareas."
+    assert assistant[1]["type"] == "tool_use" and assistant[1]["id"] == "toolu_1"
+    assert assistant[1]["input"] == {"estado": "pending"}
+    assert second[2]["content"] == [{"type": "tool_result", "tool_use_id": "toolu_1",
+                                     "content": '[{"titulo": "A"}, {"titulo": "B"}]'}]
+
+
+async def test_wire_tool_loop_stops_at_limit():
+    from app.providers.base import ToolCall, ToolResult
+
+    n = 0
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        nonlocal n
+        n += 1
+        return httpx2.Response(200, headers={"content-type": "text/event-stream"},
+                               content=_tool_use_stream(f"toolu_{n}", "listar_tareas", {}))
+
+    async def executor(call: ToolCall) -> ToolResult:
+        return ToolResult(content="[]", summary="ok")
+
+    events = [ev async for ev in _provider(handler).stream_chat(
+        system="s", turns=[ChatTurn("user", "x")],
+        options=GenerationOptions(model="claude-opus-5-5", max_tool_iterations=2),
+        tools=[{"name": "listar_tareas", "description": "d", "input_schema": {"type": "object"}}],
+        executor=executor)]
+    assert n == 3  # 2 rondas de herramientas + la llamada final que se corta
+    text = "".join(e.text for e in events if isinstance(e, TextDelta))
+    assert "límite de pasos" in text
+    assert isinstance(events[-1], Completed)

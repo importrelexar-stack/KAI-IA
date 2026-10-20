@@ -59,8 +59,8 @@ En **Configuración** también elegís modelo, esfuerzo de razonamiento, máximo
 ## 4. Voz
 
 1. Abrí la pantalla **Voz**.
-2. En «Reconocimiento de voz» y «Voz de KAI», tocá **Descargar modelo** (una sola vez; Whisper base
-   ~145 MB, voz Daniela ~110 MB). Quedan en `data\voice-models`.
+2. En «Reconocimiento de voz» y «Voz de KAI», tocá **Descargar modelo** (una sola vez; Whisper small
+   ~465 MB, voz Daniela ~110 MB). Quedan en `data\voice-models`.
 3. Tocá **Hablar** (o el núcleo). La primera vez el navegador pide permiso para el micrófono.
 4. Opcional: **Manos libres** para activar con «Hey KAI» (pide tu consentimiento).
 

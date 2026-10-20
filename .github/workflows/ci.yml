@@ -76,7 +76,7 @@ jobs:
         run: Get-ChildItem data\logs -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.Name)"; Get-Content $_.FullName -Tail 60 }
 
   voice-integration:
-    # Descarga los modelos reales (Whisper base + Piper es_AR) y prueba voz → texto de punta a punta.
+    # Descarga los modelos reales (Whisper small + Piper es_AR) y prueba voz → texto de punta a punta.
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]

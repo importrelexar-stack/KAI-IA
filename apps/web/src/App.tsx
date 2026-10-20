@@ -13,6 +13,7 @@ import { SettingsPage } from "./pages/Settings";
 import { StatusPage } from "./pages/Status";
 import { AgentsPage } from "./pages/Agents";
 import { VoicePage } from "./pages/Voice";
+import { MemoryPage } from "./pages/Memory";
 import { FuturePage } from "./components/ui";
 
 const NAV = [
@@ -22,7 +23,7 @@ const NAV = [
   { id: "agents", label: "Agentes", icon: Bot },
   { id: "tasks", label: "Automatizaciones", icon: ListChecks },
   { id: "cowork", label: "Cowork", icon: Share2 },
-  { id: "memory", label: "Memoria", icon: Brain, future: true },
+  { id: "memory", label: "Memoria", icon: Brain },
   { id: "files", label: "Archivos", icon: FolderOpen, future: true },
   { id: "history", label: "Historial", icon: History },
   { id: "settings", label: "Configuración", icon: Settings },
@@ -41,9 +42,11 @@ export default function App() {
   const [{ route, param }, setLoc] = useState(parseHash);
   const [taskTick, setTaskTick] = useState(0);
   const [voiceTick, setVoiceTick] = useState(0);
+  const [memoryTick, setMemoryTick] = useState(0);
   const { state, detail, connected } = useAssistantState((e) => {
     if (e.type === "task") setTaskTick((t) => t + 1);
     if (e.type === "voice_download") setVoiceTick((t) => t + 1);
+    if (e.type === "memory" || e.type === "project" || e.type === "task") setMemoryTick((t) => t + 1);
   });
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 2 (voz)</div>
+        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · Fase 3 (memoria y agentes)</div>
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
@@ -93,11 +96,7 @@ export default function App() {
           {route === "settings" && <SettingsPage />}
           {route === "status" && <StatusPage />}
           {route === "voice" && <VoicePage refreshKey={voiceTick} />}
-          {route === "memory" && (
-            <FuturePage title="Memoria" phase={3}
-              description="Hoy KAI recuerda tus conversaciones (Historial). La memoria avanzada agregará preferencias, proyectos y contexto con búsqueda semántica, siempre consultable y eliminable."
-              items={["Memoria de preferencias autorizadas", "Memoria de proyectos (objetivos, decisiones, próximos pasos)", "Recuperación contextual", "Controles de privacidad por memoria"]} />
-          )}
+          {route === "memory" && <MemoryPage refreshKey={memoryTick} />}
           {route === "files" && (
             <FuturePage title="Archivos" phase={4}
               description="Acceso a carpetas autorizadas para leer, buscar y organizar documentos, con confirmación para cualquier acción sensible."

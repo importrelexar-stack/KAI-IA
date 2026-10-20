@@ -372,10 +372,10 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
             onDownload={() => void download("stt")} download={s?.downloads.stt}
           />
           <label className="mt-3 block text-sm">Modelo Whisper
-            <select className="field mt-1" value={prefs?.whisper_model ?? "base"} onChange={(e) => void savePrefs({ whisper_model: e.target.value as Preferences["whisper_model"] })}>
+            <select className="field mt-1" value={prefs?.whisper_model ?? "small"} onChange={(e) => void savePrefs({ whisper_model: e.target.value as Preferences["whisper_model"] })}>
               <option value="tiny">tiny — más rápido, menos preciso (~75 MB)</option>
-              <option value="base">base — equilibrado (~145 MB)</option>
-              <option value="small">small — más preciso, más lento (~465 MB)</option>
+              <option value="base">base — liviano, menos preciso en español (~145 MB)</option>
+              <option value="small">small — recomendado para español (~465 MB)</option>
             </select>
           </label>
         </Card>

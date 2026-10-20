@@ -57,7 +57,14 @@ export interface Message {
   stop_reason?: string | null;
   input_tokens?: number;
   output_tokens?: number;
+  tool_events?: ToolEvent[] | null;
   created_at: string;
+}
+
+export interface ToolEvent {
+  name: string;
+  summary: string;
+  ok: boolean;
 }
 
 export interface ConversationSummary {
@@ -88,6 +95,11 @@ export interface Preferences {
   piper_voice: "es_AR-daniela-high" | "es_MX-claude-high" | "es_ES-davefx-medium";
   voice_auto_speak: boolean;
   voice_handsfree_consent: boolean;
+  memory_enabled: boolean;
+  memory_auto_approve: boolean;
+  agents_enabled: boolean;
+  web_search_enabled: boolean;
+  max_tool_iterations: number;
 }
 
 export interface ApiKeyStatus {
@@ -134,6 +146,9 @@ export interface Task {
   error: string | null;
   approvals: { decision: string; at: string }[];
   history: { status: string; at: string; note?: string }[];
+  project_id: string | null;
+  depends_on: string[];
+  created_by: "user" | "kai";
   created_at: string;
   updated_at: string;
 }
@@ -142,8 +157,50 @@ export interface Agent {
   id: string;
   name: string;
   description: string;
-  status: "active" | "planned";
+  status: "active" | "disabled" | "planned";
   phase: number;
+  tools: string[];
+}
+
+export type MemoryKind = "preference" | "fact" | "project";
+
+export interface MemoryItem {
+  id: string;
+  kind: MemoryKind;
+  content: string;
+  tags: string[];
+  status: "active" | "proposed";
+  source: "user" | "kai";
+  project_id: string | null;
+  conversation_id: string | null;
+  use_count: number;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectLogEntry {
+  kind: "decision" | "progress" | "note";
+  text: string;
+  by: "user" | "kai";
+  at: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  goal: string;
+  status: "active" | "paused" | "done";
+  next_steps: string;
+  files: string[];
+  log: ProjectLogEntry[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectDetail extends Project {
+  tasks: { id: string; title: string; status: TaskStatus; priority: number; depends_on: string[] }[];
+  memories: string[];
 }
 
 export interface CoworkHandoff {
@@ -171,6 +228,7 @@ export interface CoworkStatus {
 export type ChatEvent =
   | { type: "meta"; conversation_id: string; user_message: Message; title: string; provider: string }
   | { type: "delta"; text: string }
+  | ({ type: "tool" } & ToolEvent)
   | { type: "done"; conversation_id: string; assistant_message: Message; served_by_fallback: boolean }
   | { type: "error"; code: string; message: string; status: number };
 

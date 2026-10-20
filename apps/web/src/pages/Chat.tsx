@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Loader2, Mic, Plus, Send, Square } from "lucide-react";
+import { Copy, Loader2, Mic, Plus, Send, Square, Wrench } from "lucide-react";
 import { Notice } from "../components/ui";
 import { useApi } from "../hooks/useApi";
 import { get, reportVoiceState, streamChat, transcribe, type ConversationDetail, type ConversationSummary, type Message, type SystemStatus, type VoiceStatus } from "../lib/api";
@@ -110,6 +110,9 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
           }
         } else if (ev.type === "delta") {
           setMessages((m) => m.map((x) => (x.id === `${tempId}-a` ? { ...x, content: x.content + ev.text } : x)));
+        } else if (ev.type === "tool") {
+          const item = { name: ev.name, summary: ev.summary, ok: ev.ok };
+          setMessages((m) => m.map((x) => (x.id === `${tempId}-a` ? { ...x, tool_events: [...(x.tool_events ?? []), item] } : x)));
         } else if (ev.type === "done") {
           setMessages((m) => m.map((x) => (x.id === `${tempId}-a` ? ev.assistant_message : x)));
           void convs.reload();
@@ -206,6 +209,15 @@ function Bubble({ m, streaming }: { m: UiMessage; streaming: boolean }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={`group max-w-[85%] rounded-2xl px-4 py-3 text-[0.95rem] ${isUser ? "bg-electric/20 border border-electric/30" : "panel"}`}>
+        {!isUser && m.tool_events && m.tool_events.length > 0 && (
+          <ul className="mb-2 flex flex-wrap gap-1.5" aria-label="Acciones de KAI">
+            {m.tool_events.map((t, i) => (
+              <li key={i} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${t.ok ? "border-line text-muted" : "border-danger/40 text-danger"}`}>
+                <Wrench className="h-3 w-3" aria-hidden />{t.summary}
+              </li>
+            ))}
+          </ul>
+        )}
         {isUser ? (
           <p className="whitespace-pre-wrap">{m.content}</p>
         ) : m.content ? (

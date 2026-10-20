@@ -1,5 +1,22 @@
 # Cambios
 
+## [0.3.0] — 2026-10-20 — Fase 3 (memoria y agentes)
+
+### Agregado
+- Memoria persistente (preferencias, datos, notas de proyecto) con búsqueda local FTS5, propuestas que
+  requieren aprobación, rechazo de secretos, edición y borrado individual/total.
+- Proyectos: objetivo, estado, próximos pasos, registro de decisiones y avances, tareas y notas vinculadas.
+- Orquestador con tool use: herramientas de memoria, tareas, planes con dependencias y proyectos; búsqueda
+  web opcional (KAI Research); límites de pasos, tokens y tiempo; acciones visibles en el chat.
+- Tareas con proyecto, dependencias y origen (usuario/KAI).
+- Pantalla Memoria (memorias y proyectos), configuración de memoria y agentes, catálogo de agentes con
+  herramientas.
+- Migraciones automáticas de bases de datos anteriores.
+
+### Corregido / mejorado
+- Estilos de componentes en la capa de Tailwind: los anchos de campos y selectores se respetan.
+- Voz: Whisper `small` por defecto (en Windows, `base` transcribía mal frases cortas en español).
+
 ## [0.2.0] — 2026-10-20 — Fase 2 (voz) + robustez de la Fase 1
 
 ### Agregado

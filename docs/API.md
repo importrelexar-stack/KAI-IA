@@ -93,6 +93,32 @@ Preferencias: `model`, `effort` (`low`…`max`), `max_tokens` (256–64000), `hi
 | GET | `/cowork/handoffs/{id}/files/{name}` | Descarga un archivo importado |
 | POST | `/cowork/handoffs/{id}/cancel` | Cancela |
 
+## Memoria y proyectos
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/memory?kind=&status=&project_id=` | Lista (`kind`: preference/fact/project; `status`: active/proposed) |
+| GET | `/memory/search?q=` | Búsqueda BM25 local (sólo memorias activas) |
+| POST | `/memory` | `{ kind, content, tags?, project_id? }` (rechaza secretos: `422 sensitive_memory`) |
+| PATCH | `/memory/{id}` | Editar contenido, tipo, etiquetas o proyecto |
+| POST | `/memory/{id}/approve` | Aprobar una propuesta de KAI |
+| DELETE | `/memory/{id}` | Eliminar |
+| DELETE | `/memory?confirm=true` | Eliminar toda la memoria (sin `confirm` → `428`) |
+| GET/POST | `/projects` | Listar / crear `{ name, goal?, next_steps?, files? }` |
+| GET | `/projects/{id}` | Proyecto con registro, tareas y notas |
+| PATCH | `/projects/{id}` | Editar nombre, objetivo, próximos pasos, estado (`active`/`paused`/`done`) |
+| POST | `/projects/{id}/log` | `{ kind: decision \| progress \| note, text }` |
+| DELETE | `/projects/{id}` | Eliminar (sus tareas y memorias se conservan) |
+
+Tareas: `POST /tasks` acepta `project_id` y `depends_on` (ids); una tarea no pasa a `running` hasta que
+sus dependencias estén completadas. `GET /tasks?project_id=` filtra por proyecto.
+
+Chat: con agentes activos, el stream emite eventos `tool` (`{name, summary, ok}`) y el mensaje guardado
+incluye `tool_events`. WebSocket: eventos `memory` y `project`.
+
+Preferencias nuevas: `memory_enabled`, `memory_auto_approve`, `agents_enabled`, `web_search_enabled`,
+`max_tool_iterations` (1–15).
+
 ## Voz
 
 | Método | Ruta | Descripción |

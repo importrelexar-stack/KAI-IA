@@ -58,9 +58,13 @@ export function TasksPage({ refreshKey }: { refreshKey: number }) {
                     <Badge tone={TONE[t.status]}>{LABEL[t.status]}</Badge>
                     <Badge>{PRIORITY[t.priority as 1 | 2 | 3]}</Badge>
                     {t.requires_approval && <Badge tone="warn">Requiere autorización</Badge>}
+                    {t.created_by === "kai" && <Badge tone="info">Creada por KAI</Badge>}
                     <span className="ml-auto text-xs text-muted">{formatDate(t.created_at)}</span>
                   </div>
-                  {t.description && <p className="mt-1 text-sm text-muted">{t.description}</p>}
+                  {t.description && <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{t.description}</p>}
+                  {t.depends_on?.length > 0 && (
+                    <p className="mt-1 text-xs text-muted">Depende de: {t.depends_on.map((d) => tasks.data?.find((x) => x.id === d)?.title ?? d).join(", ")}</p>
+                  )}
                   {t.result && <p className="mt-1 text-sm text-ok">Resultado: {t.result}</p>}
                   {t.error && <p className="mt-1 text-sm text-danger">Error: {t.error}</p>}
                   <div className="mt-2 flex flex-wrap gap-2">
