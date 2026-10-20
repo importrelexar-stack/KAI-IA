@@ -94,3 +94,4 @@ jobs:
         env:
           KAI_VOICE_INTEGRATION: "1"
           KAI_USE_KEYRING: "false"
+          PYTHONUTF8: "1"

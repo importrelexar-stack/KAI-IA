@@ -68,7 +68,7 @@ def test_roundtrip_piper_to_whisper(engines):
         t = stt.transcribe(buf.getvalue(), "es-AR")
         text = _norm(t.text)
         found = [k for k in keywords if k in text]
-        print(f"Piper: «{phrase}» → Whisper: «{t.text}» ({len(found)}/{len(keywords)})")
+        print(f"Piper: «{phrase}» -> Whisper: «{t.text}» ({len(found)}/{len(keywords)})")
         assert t.language == "es" and t.duration_seconds > 1
         total += len(keywords)
         hits += len(found)
