@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -11,8 +14,11 @@ from sqlalchemy.orm import Session
 from app.api.deps import client_id, get_ctx, get_db
 from app.core.context import AppContext
 from app.core.errors import KaiError, NotFoundError, ProviderNotConfiguredError
-from app.models.entities import Conversation, Message
+from app.automation.files import read_text
+from app.cowork.bridge import safe_filename
+from app.models.entities import Attachment, Conversation, Message
 from app.schemas.chat import (
+    AttachmentOut,
     ChatRequest,
     ChatResponse,
     ConversationDetail,
@@ -46,7 +52,8 @@ async def chat(body: ChatRequest, request: Request, ctx: Ctx):  # type: ignore[n
             "No hay una clave de API de Anthropic configurada. El chat real no está disponible: "
             "cargala en Configuración o iniciá en modo demostración."
         )
-    events = stream_chat(ctx, body.message, body.conversation_id, channel=body.channel)
+    events = stream_chat(ctx, body.message, body.conversation_id, channel=body.channel,
+                         attachment_ids=body.attachment_ids, client=client_id(request))
     if body.stream:
         async def sse():  # type: ignore[no-untyped-def]
             async for ev in events:
@@ -67,6 +74,50 @@ async def chat(body: ChatRequest, request: Request, ctx: Ctx):  # type: ignore[n
     assert meta and done
     return ChatResponse(conversation_id=done["conversation_id"], user_message=meta["user_message"],
                         assistant_message=done["assistant_message"], served_by_fallback=done["served_by_fallback"])
+
+
+IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+
+@router.post("/chat/attachments", response_model=AttachmentOut, status_code=201,
+             summary="Adjuntar un documento (texto, PDF, Word) o una imagen al próximo mensaje")
+async def upload_attachment(request: Request, ctx: Ctx, db: Db, file: UploadFile = File(...)) -> AttachmentOut:
+    limit = ctx.settings.max_upload_mb * 1024 * 1024
+    data = await file.read(limit + 1)
+    if not data:
+        raise KaiError("El archivo está vacío.", code="empty_file", status_code=422)
+    if len(data) > limit:
+        raise KaiError(f"El archivo supera {ctx.settings.max_upload_mb} MB.", code="file_too_large", status_code=413)
+    name = safe_filename(file.filename or "archivo")
+    media = (file.content_type or "").split(";")[0].strip().lower()
+    att_id = uuid.uuid4().hex
+    folder = ctx.settings.data_dir / "attachments" / att_id
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / name
+    path.write_bytes(data)
+    text: str | None = None
+    if media in IMAGE_TYPES or Path(name).suffix.lower() in IMAGE_TYPES.values():
+        if len(data) > MAX_IMAGE_BYTES:
+            raise KaiError("La imagen supera 5 MB.", code="file_too_large", status_code=413)
+        kind = "image"
+        media = media if media in IMAGE_TYPES else {v: k for k, v in IMAGE_TYPES.items()}.get(
+            Path(name).suffix.lower().replace(".jpeg", ".jpg"), "image/jpeg")
+    else:
+        kind = "document"
+        try:
+            text, _ = read_text(path)
+        except KaiError:
+            path.unlink(missing_ok=True)
+            raise
+        media = media or "text/plain"
+    att = Attachment(id=att_id, name=name, kind=kind, media_type=media, size=len(data), text=text, path=str(path))
+    db.add(att)
+    db.commit()
+    audit(db, "chat.attachment", target=att_id, details={"name": name, "kind": kind, "size": len(data)},
+          client=client_id(request))
+    return AttachmentOut(id=att.id, name=att.name, kind=att.kind, media_type=att.media_type, size=att.size,
+                         chars=len(text or ""))
 
 
 @router.get("/conversations", response_model=list[ConversationSummary], summary="Listar conversaciones")

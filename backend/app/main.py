@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api.v1 import automation, chat, cowork, memory, settings as settings_api, system, tasks, voice
+from app.api.v1 import automation, chat, cowork, devices, memory, settings as settings_api, system, tasks, voice
 from app.core.config import Settings, get_settings
 from app.core.context import AppContext, ProviderFactory, default_provider_factory
 from app.core.errors import KaiError, kai_error_handler
@@ -87,13 +87,14 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
     app.add_exception_handler(KaiError, kai_error_handler)
     app.add_exception_handler(VoiceEngineError, _voice_error_handler)
     app.add_exception_handler(RequestValidationError, _validation_handler)  # type: ignore[arg-type]
-    app.add_middleware(AccessControlMiddleware, token=ctx.access_token, allowed_origins=settings.effective_origins)
+    app.add_middleware(AccessControlMiddleware, token=ctx.access_token, allowed_origins=settings.effective_origins,
+                       db_factory=db.SessionLocal)
     app.add_middleware(CORSMiddleware, allow_origins=settings.effective_origins, allow_credentials=False,
                        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-                       allow_headers=["Content-Type", "X-KAI-Token"])
+                       allow_headers=["Content-Type", "X-KAI-Token", "Authorization"])
 
     for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router, voice.router, memory.router,
-              automation.router):
+              automation.router, devices.router):
         app.include_router(r, prefix="/api/v1")
 
     _mount_frontend(app, settings.web_dist)
@@ -138,8 +139,22 @@ def run() -> None:
         except (AttributeError, ValueError):
             pass
     s = get_settings()
+    if not os.environ.get("KAI_HOST"):
+        # Acceso remoto activado desde la interfaz: se escucha en la red (sólo se aceptan clientes de
+        # redes privadas con un dispositivo vinculado; ver security/access.py).
+        from app.database.session import Database
+        from app.security.devices import remote_enabled
+
+        s.ensure_dirs()
+        probe = Database(s.database_url)
+        probe.create_all()
+        with probe.SessionLocal() as db:
+            if remote_enabled(db):
+                s = s.model_copy(update={"host": "0.0.0.0"})
+        probe.engine.dispose()
     if s.host not in ("127.0.0.1", "localhost", "::1"):
-        log.warning("KAI_HOST=%s expone KAI Core fuera de este equipo. No lo publiques en Internet.", s.host)
+        log.warning("KAI Core escucha en %s: acepta sólo redes privadas y dispositivos vinculados. "
+                    "No abras el puerto %s en el router.", s.host, s.port)
     app = create_app(s)
     server = uvicorn.Server(uvicorn.Config(app, host=s.host, port=s.port, log_level=s.log_level.lower()))
     # La app de escritorio pasa un token para pedir un cierre ordenado (POST /api/v1/system/shutdown).

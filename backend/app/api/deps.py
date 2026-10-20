@@ -17,4 +17,17 @@ def get_db(request: Request) -> Iterator[Session]:
 
 
 def client_id(request: Request) -> str:
+    device = getattr(request.state, "device", None)
+    if device is not None:
+        return f"device:{device.name}"
     return request.client.host if request.client else "unknown"
+
+
+def require_local(request: Request) -> None:
+    """Sólo desde la propia computadora (administración de dispositivos y acceso remoto)."""
+    from app.core.errors import KaiError
+    from app.security.access import LOCAL_HOSTS
+
+    if (request.client.host if request.client else "") not in LOCAL_HOSTS:
+        raise KaiError("Esta acción sólo se puede hacer desde la computadora donde corre KAI.",
+                       code="local_only", status_code=403)

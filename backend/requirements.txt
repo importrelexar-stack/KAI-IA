@@ -9,3 +9,4 @@ keyring>=25,<26
 python-multipart>=0.0.9
 pypdf>=5,<7
 send2trash>=1.8,<3
+segno>=1.6,<2

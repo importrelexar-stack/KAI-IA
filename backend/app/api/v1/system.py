@@ -102,12 +102,19 @@ async def events(ws: WebSocket) -> None:
     ctx: AppContext = ws.app.state.ctx
     origin = ws.headers.get("origin")
     client_host = ws.client.host if ws.client else ""
-    if origin and origin not in ctx.settings.effective_origins:
-        await ws.close(code=1008)
-        return
-    if client_host not in LOCAL_HOSTS and not hmac.compare_digest(ws.query_params.get("token", ""), ctx.access_token):
-        await ws.close(code=1008)
-        return
+    if client_host in LOCAL_HOSTS:
+        if origin and origin not in ctx.settings.effective_origins:
+            await ws.close(code=1008)
+            return
+    else:
+        from app.security.access import authorize_remote, split_host
+
+        result = authorize_remote(ctx.db.SessionLocal, ctx.access_token, client_host,
+                                  split_host(ws.headers.get("host", "")), ws.query_params.get("token", ""),
+                                  "GET", "/api/v1/ws/events")
+        if not result.ok:
+            await ws.close(code=1008)
+            return
     await ws.accept()
     queue = ctx.bus.subscribe()
     try:
