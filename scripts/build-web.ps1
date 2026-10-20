@@ -11,10 +11,10 @@ if (-not (Test-NodeOk)) {
 Push-Location $WebDir
 try {
     Write-Step "Instalando dependencias de la interfaz (npm ci)"
-    if (Test-Path 'package-lock.json') { npm ci --no-fund --no-audit } else { npm install --no-fund --no-audit }
+    if (Test-Path 'package-lock.json') { Invoke-Native { npm ci --no-fund --no-audit } } else { Invoke-Native { npm install --no-fund --no-audit } }
     if ($LASTEXITCODE -ne 0) { Fail "npm no pudo instalar las dependencias." }
     Write-Step "Compilando"
-    npm run build
+    Invoke-Native { npm run build }
     if ($LASTEXITCODE -ne 0) { Fail "La compilación de la interfaz falló." }
     Write-Ok "Interfaz compilada en apps\web\dist"
 } finally {

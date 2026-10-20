@@ -39,3 +39,38 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  windows-scripts:
+    # Ejecuta los scripts reales de instalación y operación en Windows PowerShell 5.1.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: install.ps1
+        shell: powershell
+        run: .\scripts\install.ps1
+      - name: start.ps1 (demo) + chat + stop.ps1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\scripts\start.ps1 -Demo -NoBrowser
+          $h = Invoke-RestMethod http://127.0.0.1:8765/api/v1/health
+          if ($h.status -ne 'ok') { throw "health falló" }
+          $page = Invoke-WebRequest http://127.0.0.1:8765/ -UseBasicParsing
+          if ($page.Content -notmatch '<div id="root">') { throw "la interfaz no se sirve" }
+          $body = @{ message = 'Hola KAI'; stream = $false } | ConvertTo-Json
+          $r = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8765/api/v1/chat -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+          if ($r.assistant_message.content -notmatch 'DEMOSTRACI') { throw "respuesta inesperada" }
+          .\scripts\stop.ps1
+          Start-Sleep -Seconds 1
+          try { Invoke-RestMethod http://127.0.0.1:8765/api/v1/health -TimeoutSec 2; throw "sigue activo" } catch { if ($_.Exception.Message -eq 'sigue activo') { throw } }
+          Write-Host "Scripts de Windows OK"
+      - name: Registros si falló
+        if: failure()
+        shell: powershell
+        run: Get-ChildItem data\logs -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.Name)"; Get-Content $_.FullName -Tail 60 }

@@ -34,7 +34,7 @@ Write-Ok "Python $($py.Version) ($($py.Cmd) $($py.Args -join ' '))"
 # 2. Entorno virtual
 Write-Step "Creando entorno virtual en backend\.venv"
 if (-not (Test-Path $VenvPython)) {
-    & $py.Cmd @($py.Args + @('-m', 'venv', (Join-Path $BackendDir '.venv')))
+    Invoke-Native { & $py.Cmd @($py.Args + @('-m', 'venv', (Join-Path $BackendDir '.venv'))) }
     if ($LASTEXITCODE -ne 0) { Fail "No se pudo crear el entorno virtual." }
     Write-Ok "Entorno virtual creado"
 } else {
@@ -44,8 +44,8 @@ if (-not (Test-Path $VenvPython)) {
 # 3. Dependencias
 Write-Step "Instalando dependencias de Python"
 $req = if ($Dev) { 'requirements-dev.txt' } else { 'requirements.txt' }
-& $VenvPython -m pip install --disable-pip-version-check -q --upgrade pip
-& $VenvPython -m pip install --disable-pip-version-check -q -r (Join-Path $BackendDir $req)
+Invoke-Native { & $VenvPython -m pip install --disable-pip-version-check -q --upgrade pip }
+Invoke-Native { & $VenvPython -m pip install --disable-pip-version-check -q -r (Join-Path $BackendDir $req) }
 if ($LASTEXITCODE -ne 0) { Fail "Falló la instalación de dependencias. Revisá tu conexión a Internet y reintentá." }
 Write-Ok "Dependencias instaladas ($req)"
 
@@ -69,10 +69,13 @@ if (Test-Path $dist) {
     Write-Ok "Node.js $(Get-NodeVersion) detectado. Compilando la interfaz…"
     & "$PSScriptRoot\build-web.ps1"
 } else {
-    Write-Warn "No se encontró Node.js 20.19+ / 22.12+. Es necesario sólo para compilar la interfaz."
-    Write-Warn "Instalalo desde https://nodejs.org (versión LTS) o con: winget install OpenJS.NodeJS.LTS"
-    Write-Warn "Luego ejecutá: scripts\build-web.ps1"
-    Write-Warn "Mientras tanto KAI Core funciona y su API queda en http://127.0.0.1:8765/docs"
+    Write-Warn "No se encontró Node.js: se descarga la interfaz ya compilada desde GitHub."
+    if (Install-PrebuiltWeb) {
+        Write-Ok "Interfaz descargada en apps\web\dist"
+    } else {
+        Write-Warn "Para compilarla vos: instalá Node.js LTS (https://nodejs.org o winget install OpenJS.NodeJS.LTS)"
+        Write-Warn "y ejecutá scripts\build-web.ps1. Mientras tanto la API queda en http://127.0.0.1:8765/docs"
+    }
 }
 
 Write-Host ""

@@ -117,8 +117,15 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
 
 
 def run() -> None:
+    import sys
+
     import uvicorn
 
+    for stream in (sys.stdout, sys.stderr):  # consola de Windows: evitar errores de codificación
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
     s = get_settings()
     if s.host not in ("127.0.0.1", "localhost", "::1"):
         log.warning("KAI_HOST=%s expone KAI Core fuera de este equipo. No lo publiques en Internet.", s.host)
