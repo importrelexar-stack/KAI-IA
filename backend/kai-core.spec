@@ -19,7 +19,8 @@ binaries = []
 hiddenimports = collect_submodules("uvicorn") + collect_submodules("app") + [
     "keyring.backends.Windows", "keyring.backends.SecretService", "keyring.backends.macOS", "keyring.backends.fail",
 ]
-hiddenimports += collect_submodules("mcp")
+# mcp.cli es la herramienta de consola de MCP (requiere typer) y KAI no la usa.
+hiddenimports += collect_submodules("mcp", filter=lambda name: name != "mcp.cli" and not name.startswith("mcp.cli."))
 for pkg in ("faster_whisper", "ctranslate2", "piper", "onnxruntime", "av", "tokenizers", "huggingface_hub"):
     if importlib.util.find_spec(pkg) is not None:
         d, b, h = collect_all(pkg)
