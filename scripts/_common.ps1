@@ -39,11 +39,12 @@ function Find-Python {
     foreach ($c in $candidates) {
         if (-not (Get-Command $c.Cmd -ErrorAction SilentlyContinue)) { continue }
         try {
-            $v = Invoke-Native { & $c.Cmd @($c.Args + @('-c', 'import sys; print("%d.%d" % sys.version_info[:2])')) 2>$null }
+            # Sin comillas dobles en el argumento: Windows PowerShell 5.1 no las escapa al llamar a programas.
+            $v = Invoke-Native { & $c.Cmd @($c.Args + @('-c', 'import sys; print(sys.version_info[0], sys.version_info[1])')) 2>$null }
             if ($LASTEXITCODE -ne 0 -or -not $v) { continue }
-            $parts = $v.Trim().Split('.')
+            $parts = ($v | Select-Object -Last 1).ToString().Trim() -split '\s+'
             if ([int]$parts[0] -eq 3 -and [int]$parts[1] -ge 11) {
-                return @{ Cmd = $c.Cmd; Args = $c.Args; Version = $v.Trim() }
+                return @{ Cmd = $c.Cmd; Args = $c.Args; Version = "$($parts[0]).$($parts[1])" }
             }
         } catch { continue }
     }

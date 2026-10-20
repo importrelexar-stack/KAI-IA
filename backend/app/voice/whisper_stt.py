@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import logging
 import threading
+import wave
 from pathlib import Path
 
 from app.voice.base import EngineStatus, SpeechToText, Transcript, VoiceEngineError, language_code
@@ -16,6 +17,50 @@ from app.voice.base import EngineStatus, SpeechToText, Transcript, VoiceEngineEr
 log = logging.getLogger(__name__)
 
 WHISPER_MODELS_MB = {"tiny": 75, "base": 145, "small": 465}
+SAMPLE_RATE = 16_000
+
+
+def decode_audio(data: bytes):  # type: ignore[no-untyped-def]
+    """Devuelve PCM float32 mono a 16 kHz.
+
+    WAV (lo que envía la interfaz) se decodifica con la biblioteca estándar; otros formatos
+    (webm/ogg/mp3) con PyAV. No se usa el decodificador de faster-whisper porque depende de
+    una API de PyAV que cambió entre versiones.
+    """
+    import numpy as np
+
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        with wave.open(io.BytesIO(data)) as w:
+            channels, width, rate = w.getnchannels(), w.getsampwidth(), w.getframerate()
+            raw = w.readframes(w.getnframes())
+        if width == 2:
+            pcm = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+        elif width == 4:
+            pcm = np.frombuffer(raw, dtype="<i4").astype(np.float32) / 2147483648.0
+        elif width == 1:
+            pcm = (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+        else:
+            raise ValueError(f"WAV de {width * 8} bits no soportado")
+        if channels > 1:
+            pcm = pcm.reshape(-1, channels).mean(axis=1)
+        if rate != SAMPLE_RATE and len(pcm):
+            n = int(round(len(pcm) * SAMPLE_RATE / rate))
+            pcm = np.interp(np.linspace(0, len(pcm) - 1, n), np.arange(len(pcm)), pcm).astype(np.float32)
+        return pcm
+
+    import av
+
+    chunks = []
+    with av.open(io.BytesIO(data)) as container:
+        resampler = av.AudioResampler(format="s16", layout="mono", rate=SAMPLE_RATE)
+        for frame in container.decode(audio=0):
+            for out in resampler.resample(frame):
+                chunks.append(out.to_ndarray().reshape(-1))
+        for out in resampler.resample(None):
+            chunks.append(out.to_ndarray().reshape(-1))
+    if not chunks:
+        return np.zeros(0, dtype=np.float32)
+    return np.concatenate(chunks).astype(np.float32) / 32768.0
 
 
 class WhisperSTT(SpeechToText):
@@ -76,7 +121,10 @@ class WhisperSTT(SpeechToText):
         with self._lock:
             model = self._load()
             try:
-                segments, info = model.transcribe(io.BytesIO(audio), language=language_code(language),
+                pcm = decode_audio(audio)
+                if len(pcm) < SAMPLE_RATE // 10:
+                    raise VoiceEngineError("El audio es demasiado corto.", code="invalid_audio", status_code=422)
+                segments, info = model.transcribe(pcm, language=language_code(language),
                                                   beam_size=1, vad_filter=True, condition_on_previous_text=False)
                 text = " ".join(s.text.strip() for s in segments).strip()
             except VoiceEngineError:

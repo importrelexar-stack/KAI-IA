@@ -90,7 +90,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r requirements-dev.txt -r requirements-voice.txt
-      - run: python -m pytest tests/test_voice_integration.py -s
+      - run: python -m pytest tests/test_voice.py tests/test_voice_integration.py -s
         env:
           KAI_VOICE_INTEGRATION: "1"
           KAI_USE_KEYRING: "false"

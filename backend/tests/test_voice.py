@@ -183,3 +183,33 @@ def test_real_engines_report_missing_models(tmp_path):
         PiperTTS(tmp_path, "../../x")
     with pytest.raises(ValueError):
         WhisperSTT(tmp_path, "gigante")
+
+
+def test_decode_audio_wav_and_compressed():
+    np = pytest.importorskip("numpy")
+    av = pytest.importorskip("av")
+    from app.voice.whisper_stt import decode_audio
+
+    rate = 48000
+    sig = (0.5 * np.sin(2 * np.pi * 440 * np.arange(rate) / rate) * 32767).astype("<i2")
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(np.stack([sig, sig], 1).reshape(-1).tobytes())
+    pcm = decode_audio(buf.getvalue())
+    assert pcm.dtype == np.float32 and len(pcm) == 16000 and 0.45 < abs(pcm).max() < 0.55
+
+    out = io.BytesIO()
+    with av.open(out, "w", format="ogg") as c:
+        stream = c.add_stream("libopus", rate=48000)
+        stream.layout = "mono"
+        frame = av.AudioFrame.from_ndarray(sig.reshape(1, -1), format="s16", layout="mono")
+        frame.sample_rate = 48000
+        for p in stream.encode(frame):
+            c.mux(p)
+        for p in stream.encode(None):
+            c.mux(p)
+    pcm = decode_audio(out.getvalue())
+    assert 15000 <= len(pcm) <= 17000
