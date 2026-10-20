@@ -1,16 +1,16 @@
 # KAI AI
 
-Asistente personal de escritorio para **Windows** (Android en camino), con Claude como motor de IA.
+Asistente personal para **Windows** y **Android** (beta), con Claude como motor de IA.
 Arquitectura modular: interfaz React, núcleo local **KAI Core** (FastAPI + SQLite) y proveedores de IA
 intercambiables.
 
-> **Estado: Fases 1 (MVP), 2 (voz), 3 (memoria y agentes), 4 (automatización de Windows) y 4b (app de
-> escritorio con instalador) completadas.** Chat real con Claude, historial persistente,
+> **Estado: Fases 1 a 6 implementadas** (Android en beta). Chat real con Claude, historial persistente,
 > configuración segura de la clave, motor de tareas, CoworkBridge manual, núcleo visual con estados reales,
 > **conversación por voz en español de Argentina** (reconocimiento y síntesis locales, «Hey KAI» con
-> consentimiento, interrupción, dictado), **memoria persistente y proyectos**, **orquestador con agentes**
-> (memoria, planificación, búsqueda web opcional), **archivos y aplicaciones con permisos y confirmación**,
-> scripts de Windows y pruebas automatizadas. Android es la fase siguiente.
+> consentimiento, interrupción, dictado), **memoria persistente y proyectos**, **orquestador con agentes**,
+> **archivos y aplicaciones con permisos y confirmación**, **app de escritorio con instalador**,
+> **app Android** (vinculación por QR, chat, voz, archivos, autorizaciones), **integraciones MCP** y
+> **lectura web**, **rutinas programadas**, y pruebas automatizadas.
 
 ## Instalar la app de escritorio (recomendado)
 
@@ -47,6 +47,23 @@ Después, en **Configuración**, cargá tu clave de API de Anthropic (o ponela e
 > **Importante:** una suscripción Claude **Pro o Max no incluye acceso a la API**. KAI necesita una clave de
 > [console.anthropic.com](https://console.anthropic.com) con facturación propia. Sin clave, KAI inicia
 > igual e indica que el chat real no está disponible.
+
+## Integraciones y rutinas (Fase 6)
+
+- Pantalla **Integraciones**: conectá servidores **MCP** (el estándar abierto para conectar asistentes con
+  aplicaciones: calendario, correo, notas, gestores de proyectos…), locales (un programa en tu PC) o remotos
+  (HTTP con token). Sus herramientas quedan disponibles para Claude: las de **solo lectura** se permiten por
+  defecto y las que **modifican algo piden autorización**; podés ajustarlo por herramienta. Las claves van
+  al Administrador de credenciales de Windows.
+- **Web**: búsqueda y lectura de páginas (apagadas por defecto; tienen costo por uso).
+- Pantalla **Rutinas**: pedidos que KAI hace solo («de lunes a viernes 8:30, resumime pendientes»), en
+  su propia conversación, con las mismas reglas de autorización y presupuesto que el chat.
+- **Claude Cowork**: no tiene una API pública, así que sigue siendo un puente manual (CoworkBridge).
+
+## App Android (Fase 5, beta)
+
+Vinculá el teléfono desde **Dispositivos** (QR de un solo uso, sólo por tu red privada o Tailscale). Ver
+[apps/android/README.md](apps/android/README.md).
 
 ## Automatización de Windows (Fase 4)
 

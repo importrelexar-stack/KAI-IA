@@ -70,6 +70,8 @@ def system_status(ctx: Ctx, db: Db) -> dict:
             "files": "available",
             "attachments": "available",
             "android": "beta",
+            "integrations": "available",
+            "routines": "available",
         },
     }
 

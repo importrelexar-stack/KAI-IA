@@ -58,7 +58,17 @@ Por qué «beta»: el APK se compila y prueba en CI, pero todavía no se probó 
 Pendiente: notificaciones en tiempo real (push sin Google requiere un servicio en primer plano), «Hey KAI»
 en el teléfono, firma de release y publicación en tiendas, renderizado Markdown en las respuestas.
 
-## Fase 6 — Integraciones
+## ✅ Fase 6 — Integraciones (esta versión)
 
-Claude Cowork (si se publica una integración oficial), MCP, calendario, correo, gestión de proyectos,
-navegación y automatizaciones complejas.
+- **MCP**: KAI es cliente MCP (SDK oficial). Servidores locales (stdio) o remotos (HTTP con token);
+  herramientas con nivel permitir/preguntar/bloquear (solo lectura → permitir por defecto; el resto →
+  autorización); claves en el almacén de credenciales; resultados marcados como datos externos. Calendario,
+  correo y gestión de proyectos se conectan a través de servidores MCP de cada servicio.
+- **Navegación**: búsqueda y lectura de páginas web de Anthropic (`web_search`/`web_fetch`), opcionales.
+- **Automatizaciones complejas**: rutinas programadas (diarias, por días de la semana o por intervalo)
+  que corren con las reglas del chat; combinadas con MCP y archivos permiten flujos de varios pasos.
+- **Claude Cowork**: sigue sin API pública; se mantiene el puente manual. Se integrará sólo si Anthropic
+  publica una integración oficial.
+
+Pendiente: servidores MCP que requieren inicio de sesión OAuth (hoy: token), notificaciones de rutinas
+en el teléfono, recursos y prompts de MCP (hoy: sólo herramientas).

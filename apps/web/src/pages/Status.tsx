@@ -5,7 +5,7 @@ import type { SystemStatus } from "../lib/api";
 
 const FEATURE: Record<string, string> = {
   chat: "Chat con Claude", history: "Historial persistente", tasks: "Motor de tareas", cowork_bridge: "CoworkBridge",
-  voice: "Voz", agents: "Agentes especializados", automation: "Automatización Windows", files: "Archivos", attachments: "Adjuntos en el chat", android: "Android",
+  voice: "Voz", agents: "Agentes especializados", automation: "Automatización Windows", files: "Archivos", attachments: "Adjuntos en el chat", android: "Android", integrations: "Integraciones (MCP y web)", routines: "Rutinas programadas",
 };
 const FEATURE_STATE: Record<string, { label: string; tone: "ok" | "warn" | "muted" | "info" }> = {
   available: { label: "Disponible", tone: "ok" },
