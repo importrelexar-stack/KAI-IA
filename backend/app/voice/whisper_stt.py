@@ -18,6 +18,8 @@ log = logging.getLogger(__name__)
 
 WHISPER_MODELS_MB = {"tiny": 75, "base": 145, "small": 465}
 SAMPLE_RATE = 16_000
+# Contexto inicial: mejora la puntuación y el reconocimiento del nombre «KAI».
+INITIAL_PROMPTS = {"es": "Conversación en español rioplatense con KAI, un asistente personal."}
 
 
 def decode_audio(data: bytes):  # type: ignore[no-untyped-def]
@@ -124,8 +126,14 @@ class WhisperSTT(SpeechToText):
                 pcm = decode_audio(audio)
                 if len(pcm) < SAMPLE_RATE // 10:
                     raise VoiceEngineError("El audio es demasiado corto.", code="invalid_audio", status_code=422)
-                segments, info = model.transcribe(pcm, language=language_code(language),
-                                                  beam_size=1, vad_filter=True, condition_on_previous_text=False)
+                code = language_code(language)
+                # La interfaz ya entrega sólo la frase hablada: el VAD de Whisper puede recortar el
+                # comienzo, así que se usa sólo en audios largos (archivos importados).
+                segments, info = model.transcribe(
+                    pcm, language=code, beam_size=5, condition_on_previous_text=False,
+                    vad_filter=len(pcm) > 30 * SAMPLE_RATE,
+                    initial_prompt=INITIAL_PROMPTS.get(code),
+                )
                 text = " ".join(s.text.strip() for s in segments).strip()
             except VoiceEngineError:
                 raise
