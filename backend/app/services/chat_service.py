@@ -111,7 +111,7 @@ def _read_image(att: Attachment) -> str | None:
 
 async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None,
                       channel: str = "text", attachment_ids: list[str] | None = None,
-                      client: str | None = None) -> AsyncIterator[dict[str, Any]]:
+                      client: str | None = None, title: str | None = None) -> AsyncIterator[dict[str, Any]]:
     """Genera eventos: meta → delta* → done | error."""
     db = ctx.db.SessionLocal()
     state_started = False
@@ -138,7 +138,7 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
             if conv is None:
                 raise NotFoundError("La conversación no existe.")
         else:
-            conv = Conversation(title=_title_from(message if message.strip() else attached[0]["name"]))
+            conv = Conversation(title=title or _title_from(message if message.strip() else attached[0]["name"]))
             db.add(conv)
             db.commit()
 

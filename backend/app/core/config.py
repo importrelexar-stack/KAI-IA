@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     # Seguridad
     chat_rate_limit_per_minute: int = Field(default=20, alias="KAI_CHAT_RATE_LIMIT")
     max_upload_mb: int = Field(default=25, alias="KAI_MAX_UPLOAD_MB")
+    routines_enabled: bool = Field(default=True, alias="KAI_ROUTINES")
     use_keyring: bool = Field(default=True, alias="KAI_USE_KEYRING")
 
     @field_validator("allowed_origins", mode="before")

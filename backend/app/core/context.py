@@ -35,6 +35,7 @@ class AppContext:
     provider_factory: ProviderFactory = default_provider_factory
     started_at: float = field(default_factory=time.time)
     mcp: Any = None  # McpManager (Fase 6)
+    background_tasks: set[Any] = field(default_factory=set)
     _provider: AIProvider | None = None
     _memory: MemoryStore | None = None
 

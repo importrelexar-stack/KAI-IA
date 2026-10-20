@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Activity, Bot, FolderOpen, History, LayoutDashboard, ListChecks, Brain, MessageSquare, Mic, Plug, Settings, Share2, Smartphone,
+  Activity, Bot, CalendarClock, FolderOpen, History, LayoutDashboard, ListChecks, Brain, MessageSquare, Mic, Plug, Settings, Share2, Smartphone,
 } from "lucide-react";
 import { useAssistantState } from "./hooks/useAssistantState";
 import { KaiCore, STATE_LABEL } from "./components/KaiCore";
@@ -17,6 +17,7 @@ import { MemoryPage } from "./pages/Memory";
 import { FilesPage } from "./pages/Files";
 import { DevicesPage } from "./pages/Devices";
 import { IntegrationsPage } from "./pages/Integrations";
+import { RoutinesPage } from "./pages/Routines";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -27,6 +28,7 @@ const NAV = [
   { id: "cowork", label: "Cowork", icon: Share2 },
   { id: "memory", label: "Memoria", icon: Brain },
   { id: "files", label: "Archivos", icon: FolderOpen },
+  { id: "routines", label: "Rutinas", icon: CalendarClock },
   { id: "integrations", label: "Integraciones", icon: Plug },
   { id: "devices", label: "Dispositivos", icon: Smartphone },
   { id: "history", label: "Historial", icon: History },
@@ -47,9 +49,11 @@ export default function App() {
   const [taskTick, setTaskTick] = useState(0);
   const [voiceTick, setVoiceTick] = useState(0);
   const [memoryTick, setMemoryTick] = useState(0);
+  const [routineTick, setRoutineTick] = useState(0);
   const { state, detail, connected } = useAssistantState((e) => {
     if (e.type === "task") setTaskTick((t) => t + 1);
     if (e.type === "voice_download") setVoiceTick((t) => t + 1);
+    if (e.type === "routine") setRoutineTick((t) => t + 1);
     if (e.type === "memory" || e.type === "project" || e.type === "task") setMemoryTick((t) => t + 1);
   });
 
@@ -104,6 +108,7 @@ export default function App() {
           {route === "files" && <FilesPage />}
           {route === "devices" && <DevicesPage />}
           {route === "integrations" && <IntegrationsPage />}
+          {route === "routines" && <RoutinesPage refreshKey={routineTick} />}
         </div>
       </main>
     </div>

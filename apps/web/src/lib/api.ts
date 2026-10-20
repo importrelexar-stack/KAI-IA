@@ -498,3 +498,40 @@ export function parseEnvLines(text: string): Record<string, string> {
   }
   return out;
 }
+
+// ---- Rutinas (Fase 6) ----
+
+export type RoutineSchedule =
+  | { type: "daily"; time: string }
+  | { type: "weekly"; days: number[]; time: string }
+  | { type: "interval"; minutes: number };
+
+export interface Routine {
+  id: string;
+  name: string;
+  prompt: string;
+  schedule: RoutineSchedule;
+  schedule_text: string;
+  enabled: boolean;
+  conversation_id: string | null;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  last_status: "ok" | "error" | "running" | null;
+  last_error: string | null;
+  run_count: number;
+}
+
+export interface RoutineIn {
+  name: string;
+  prompt: string;
+  schedule: RoutineSchedule;
+  enabled?: boolean;
+}
+
+export const routinesApi = {
+  list: () => api<Routine[]>("/routines"),
+  create: (body: RoutineIn) => api<Routine>("/routines", { method: "POST", body: JSON.stringify(body) }),
+  update: (id: string, body: Partial<RoutineIn>) => api<Routine>(`/routines/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  remove: (id: string) => api<void>(`/routines/${id}`, { method: "DELETE" }),
+  run: (id: string) => api<{ status: string }>(`/routines/${id}/run`, { method: "POST" }),
+};

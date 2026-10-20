@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -13,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api.v1 import automation, chat, cowork, devices, integrations, memory, settings as settings_api, system, tasks, voice
+from app.api.v1 import automation, chat, cowork, devices, integrations, memory, routines, settings as settings_api, system, tasks, voice
 from app.core.config import Settings, get_settings
 from app.core.context import AppContext, ProviderFactory, default_provider_factory
 from app.core.errors import KaiError, kai_error_handler
@@ -21,6 +22,7 @@ from app.core.logging import setup_logging
 from app.core.state import EventBus, StateManager
 from app.cowork.bridge import CoworkBridge
 from app.database.session import Database
+from app.routines.runner import scheduler_loop
 from app.integrations.mcp_manager import McpManager, load_configs as load_mcp_configs
 from app.security.access import AccessControlMiddleware, RateLimiter, load_or_create_token
 from app.security.secrets import SecretStore
@@ -82,7 +84,12 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
         else:
             log.info("KAI Core %s iniciado. Clave de API desde: %s", __version__, source)
         await ctx.mcp.start(load_mcp_configs_safe())
+        scheduler = asyncio.create_task(scheduler_loop(ctx), name="kai-routines") if settings.routines_enabled else None
         yield
+        for t in [scheduler, *ctx.background_tasks]:
+            if t is not None:
+                t.cancel()
+        await asyncio.gather(*(t for t in [scheduler, *ctx.background_tasks] if t is not None), return_exceptions=True)
         await ctx.mcp.stop()
         db.engine.dispose()
 
@@ -106,7 +113,7 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
                        allow_headers=["Content-Type", "X-KAI-Token", "Authorization"])
 
     for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router, voice.router, memory.router,
-              automation.router, devices.router, integrations.router):
+              automation.router, devices.router, integrations.router, routines.router):
         app.include_router(r, prefix="/api/v1")
 
     _mount_frontend(app, settings.web_dist)
