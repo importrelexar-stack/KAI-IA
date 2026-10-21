@@ -8,7 +8,8 @@ import { get, reportVoiceState, streamChat, transcribe, uploadAttachment, type A
 import { micErrorMessage } from "../lib/audio";
 import { MicCapture } from "../lib/mic";
 import { PendingAction } from "../components/PendingAction";
-import { browserVoice } from "../lib/speech";
+import { browserVoice, effectiveSttEngine } from "../lib/speech";
+import { SttSetup } from "../components/SttSetup";
 import { navigate } from "../lib/nav";
 
 const MAX_ATTACHMENTS = 5;
@@ -38,12 +39,14 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
   const voice = useApi<VoiceStatus>("/voice/status");
   const [dictating, setDictating] = useState<"off" | "listening" | "transcribing">("off");
   const dictateRef = useRef<{ ctrl: AbortController; mic?: MicCapture } | null>(null);
+  const [needModel, setNeedModel] = useState(false);
 
   async function dictate() {
     if (dictateRef.current) { dictateRef.current.ctrl.abort(); return; }
     const v = voice.data;
-    const local = v?.preferences.voice_stt_engine !== "browser";
-    if (local && !v?.stt.model_ready) { setError("Para dictar, descargá el modelo de reconocimiento en la pantalla Voz."); return; }
+    const local = effectiveSttEngine(v?.preferences.voice_stt_engine) === "local";
+    if (local && !v?.stt.model_ready) { setNeedModel(true); return; }
+    setNeedModel(false);
     const ctrl = new AbortController();
     const session: { ctrl: AbortController; mic?: MicCapture } = { ctrl };
     dictateRef.current = session;
@@ -69,7 +72,11 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
       if (text.trim()) setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${text.trim()}` : text.trim()));
       else if (!ctrl.signal.aborted) setError("No te escuché. Probá de nuevo.");
     } catch (e) {
-      if ((e as Error).name !== "AbortError") setError((e as Error).message);
+      if ((e as Error).name !== "AbortError") {
+        setError((e as Error).message);
+        // el reconocimiento del navegador falló en este equipo: el próximo intento usa el local
+        if (!local && !browserVoice.sttAvailable() && !v?.stt.model_ready) setNeedModel(true);
+      }
     } finally {
       session.mic?.close();
       reportVoiceState("idle");
@@ -198,6 +205,7 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
             )}
             {messages.map((m) => <Bubble key={m.id} m={m} streaming={busy && m.pending === true && m.role === "assistant"} />)}
             {error && <Notice tone="danger">{error}</Notice>}
+            {needModel && !voice.data?.stt.model_ready && <SttSetup status={voice.data} onReload={voice.reload} />}
           </div>
         </div>
 

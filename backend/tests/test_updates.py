@@ -1,0 +1,111 @@
+from __future__ import annotations
+
+import asyncio
+import hashlib
+
+import httpx
+import pytest
+
+from app.core import updates
+from app.core.errors import KaiError
+
+INSTALLER = b"MZ" + b"\x00" * 4096
+URL = updates.RELEASE_PREFIX + "kai-ai-windows/Instalar-KAI-AI.exe"
+
+
+def _transport(manifest: dict, body: bytes = INSTALLER) -> httpx.MockTransport:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("latest.json"):
+            return httpx.Response(200, json=manifest)
+        if str(request.url) == URL:
+            return httpx.Response(200, content=body, headers={"content-length": str(len(body))})
+        return httpx.Response(404)
+    return httpx.MockTransport(handler)
+
+
+def _manifest(**kw) -> dict:
+    return {"version": "9.9.0", "build": 500, "sha256": hashlib.sha256(INSTALLER).hexdigest(), "url": URL,
+            "notes": "Prueba", **kw}
+
+
+def test_is_newer_by_build_and_version():
+    assert updates.is_newer({"version": "0.9.0", "build": 12}, "0.9.0", 11)
+    assert not updates.is_newer({"version": "0.9.0", "build": 11}, "0.9.0", 11)
+    # instalación desde el código (build 0): compara versión
+    assert updates.is_newer({"version": "0.10.0", "build": 3}, "0.9.0", 0)
+    assert not updates.is_newer({"version": "0.9.0", "build": 3}, "0.9.0", 0)
+
+
+def test_check_endpoint(client):
+    client.app.state.ctx.updater = updates.Updater(_transport(_manifest()))
+    r = client.get("/api/v1/system/update")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["available"] is True and data["latest"]["version"] == "9.9.0"
+    assert data["can_install"] is False  # las pruebas no corren en la app empaquetada
+    r = client.post("/api/v1/system/update/install")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "update_not_supported"
+
+
+def test_check_failure_is_reported(client):
+    client.app.state.ctx.updater = updates.Updater(httpx.MockTransport(lambda req: httpx.Response(500)))
+    r = client.get("/api/v1/system/update")
+    assert r.status_code == 502 and r.json()["error"]["code"] == "update_check_failed"
+
+
+def test_update_is_local_only(client):
+    from fastapi.testclient import TestClient
+    remote = TestClient(client.app, client=("192.168.1.50", 5000), base_url="http://192.168.1.10:8765")
+    assert remote.get("/api/v1/system/update").status_code in (401, 403)
+
+
+def test_download_verifies_checksum(tmp_path):
+    u = updates.Updater(_transport(_manifest()))
+    path = asyncio.run(u.download(URL, hashlib.sha256(INSTALLER).hexdigest(), tmp_path))
+    assert path.read_bytes() == INSTALLER and u.state["progress"] == 1.0
+
+    bad = updates.Updater(_transport(_manifest(), body=b"MZ otro archivo"))
+    with pytest.raises(KaiError) as e:
+        asyncio.run(bad.download(URL, hashlib.sha256(INSTALLER).hexdigest(), tmp_path / "b"))
+    assert e.value.code == "update_checksum"
+    assert not list((tmp_path / "b").iterdir())
+
+
+def test_install_rejects_foreign_url(monkeypatch, tmp_path):
+    launched = []
+    monkeypatch.setattr(updates, "launch_installer", launched.append)
+    monkeypatch.setattr(updates.Updater, "can_install", property(lambda self: True))
+    u = updates.Updater(_transport(_manifest(url="https://evil.example/kai.exe")))
+    asyncio.run(u._install())
+    assert u.state["phase"] == "error" and not launched
+
+    monkeypatch.setattr(updates.tempfile, "gettempdir", lambda: str(tmp_path))
+    ok = updates.Updater(_transport(_manifest()))
+    asyncio.run(ok._install())
+    assert ok.state["phase"] == "launched" and launched and launched[0].name == "Instalar-KAI-AI.exe"
+
+
+def test_helper_script_waits_closes_installs_and_reopens(tmp_path):
+    exe = tmp_path / "kai-desktop.exe"
+    exe.write_bytes(b"MZ")
+    script = updates.helper_script(tmp_path / "Instalar-KAI-AI.exe", "4321", exe)
+    lines = script.split("\r\n")
+    assert lines[2].startswith("ping -n")  # pausa compatible sin consola
+    assert "taskkill /PID 4321 /F >nul 2>&1" in lines and not any("/T" in ln for ln in lines)
+    assert f'"{tmp_path / "Instalar-KAI-AI.exe"}" /S' in lines
+    assert lines.index(f'start "" "{exe}"') > lines.index(f'"{tmp_path / "Instalar-KAI-AI.exe"}" /S')
+    # sin PID válido no se cierra nada por las dudas
+    assert "taskkill" not in updates.helper_script(tmp_path / "x.exe", "abc", tmp_path / "no.exe")
+
+
+def test_after_launch_shuts_down(monkeypatch, tmp_path):
+    monkeypatch.setattr(updates, "launch_installer", lambda p: None)
+    monkeypatch.setattr(updates.Updater, "can_install", property(lambda self: True))
+    monkeypatch.setattr(updates.tempfile, "gettempdir", lambda: str(tmp_path))
+    real_sleep = asyncio.sleep
+    monkeypatch.setattr(updates.asyncio, "sleep", lambda s: real_sleep(0))
+    calls = []
+    u = updates.Updater(_transport(_manifest()))
+    u.after_launch = lambda: calls.append(True)
+    asyncio.run(u._install())
+    assert calls == [True]

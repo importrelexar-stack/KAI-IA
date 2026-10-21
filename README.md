@@ -17,6 +17,7 @@ intercambiables.
 **[⬇ Descargar Instalar-KAI-AI.exe](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-windows/Instalar-KAI-AI.exe)** → doble clic → «Siguiente». No pide permisos de
 administrador ni necesita Python o Node.js, y crea el acceso «KAI AI» en el escritorio. Si SmartScreen avisa
 que no está firmado: «Más información» → «Ejecutar de todos modos». Ver [apps/desktop/README.md](apps/desktop/README.md).
+Las versiones siguientes se instalan desde la propia app con el botón **Actualizar** (abajo a la izquierda).
 
 Android (beta): **[⬇ KAI-AI.apk](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-android/KAI-AI.apk)** (abrilo desde el teléfono).
 
@@ -39,6 +40,7 @@ Después, en **Configuración**, cargá tu clave de API de Anthropic (o ponela e
 |---|---|
 | Instalar (crea el acceso «KAI AI» en el escritorio) | `.\install.bat` o `scripts\install.ps1 [-Dev] [-NoShortcut]` |
 | Acceso directo en el escritorio | `.\crear-acceso-directo.bat` (`-StartMenu` también en el menú Inicio, `-Remove` lo quita) |
+| Actualizar (git pull + dependencias) | `.\actualizar.bat` o `scripts\update.ps1` |
 | Iniciar | `.\start.bat` o `scripts\start.ps1` |
 | Modo demostración (sin IA) | `scripts\start.ps1 -Demo` |
 | Detener | `.\stop.bat` o `scripts\stop.ps1` |
@@ -100,7 +102,9 @@ Vinculá el teléfono desde **Dispositivos** (QR de un solo uso, sólo por tu re
   responde con Claude (respuestas breves pensadas para escuchar) y las lee en voz alta.
 - **Motores locales** (sin conexión ni costo por uso): reconocimiento con **Whisper** (faster-whisper) y
   voz con **Piper** `es_AR-daniela-high` (Argentina). Los modelos (Whisper small ~465 MB + voz ~110 MB) se descargan desde la
-  pantalla Voz sólo cuando lo decidís. Alternativa: voces y reconocimiento del navegador.
+  pantalla Voz sólo cuando lo decidís (botón «Descargar ahora»). Alternativa en el navegador: voces y
+  reconocimiento del navegador; en la app de escritorio el reconocimiento es siempre local porque WebView2 no
+  trae ese servicio.
 - **Interrupción**: botón, tecla `Esc`, o simplemente hablar encima en modo manos libres.
 - **Manos libres «Hey KAI»**: requiere consentimiento explícito, reconocimiento local y la pantalla
   abierta; muestra un indicador rojo; lo que no empieza con «Hey KAI» se descarta.

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { SilenceDetector, concat, downsample, encodeWav, micErrorMessage, rms } from "../lib/audio";
 import { cleanForSpeech, matchWakeWord } from "../lib/speech";
 
@@ -94,5 +94,36 @@ describe("cleanForSpeech", () => {
     expect(cleanForSpeech("# Título\n\nTexto con `code` y ```py\nx=1\n```")).toBe(
       "Título. Texto con code y (te dejé el código en pantalla)",
     );
+  });
+});
+
+describe("reconocimiento en la app de escritorio", () => {
+  const w = window as unknown as Record<string, unknown>;
+  afterEach(() => { delete w.webkitSpeechRecognition; delete w.chrome; });
+
+  it("en WebView2 no ofrece el reconocimiento del navegador y usa el local", async () => {
+    const { browserVoice, effectiveSttEngine, isDesktopApp } = await import("../lib/speech");
+    w.webkitSpeechRecognition = function () {};
+    expect(browserVoice.sttAvailable()).toBe(true);
+    expect(effectiveSttEngine("browser")).toBe("browser");
+    w.chrome = { webview: {} };
+    expect(isDesktopApp()).toBe(true);
+    expect(browserVoice.sttAvailable()).toBe(false);
+    expect(effectiveSttEngine("browser")).toBe("local");
+    expect(effectiveSttEngine("local")).toBe("local");
+  });
+
+  it("si el navegador falla con «network», pasa al reconocimiento local", async () => {
+    const { browserVoice, effectiveSttEngine } = await import("../lib/speech");
+    class FakeRec {
+      lang = ""; interimResults = false; maxAlternatives = 1; continuous = false;
+      onresult: unknown; onend: (() => void) | null = null; onerror: ((e: { error: string }) => void) | null = null;
+      start() { setTimeout(() => { this.onerror?.({ error: "network" }); this.onend?.(); }, 0); }
+      abort() {}
+    }
+    w.webkitSpeechRecognition = FakeRec;
+    await expect(browserVoice.recognizeOnce("es-AR", new AbortController().signal)).rejects.toThrow(/reconocimiento local/);
+    expect(browserVoice.sttAvailable()).toBe(false);
+    expect(effectiveSttEngine("browser")).toBe("local");
   });
 });

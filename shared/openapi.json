@@ -3,7 +3,7 @@
   "info": {
     "title": "KAI Core API",
     "description": "API local de KAI AI. Escucha sólo en 127.0.0.1 por defecto.",
-    "version": "0.8.0"
+    "version": "0.9.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -3105,6 +3105,97 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/update": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "¿Hay una versión nueva de KAI?",
+        "operationId": "check_update_api_v1_system_update_get",
+        "parameters": [
+          {
+            "name": "force",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Force"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Update Api V1 System Update Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/update/state": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Progreso de la actualización",
+        "operationId": "update_state_api_v1_system_update_state_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Update State Api V1 System Update State Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/update/install": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Descargar e instalar la versión nueva",
+        "operationId": "install_update_api_v1_system_update_install_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Install Update Api V1 System Update Install Post"
                 }
               }
             }

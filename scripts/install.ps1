@@ -12,8 +12,11 @@
 
 .PARAMETER NoVoice
   No instala los motores de voz locales (Whisper y Piper). KAI usará la voz del navegador.
+
+.PARAMETER NoShortcut
+  No crea el acceso directo «KAI AI» en el escritorio.
 #>
-param([switch]$Dev, [switch]$NoVoice)
+param([switch]$Dev, [switch]$NoVoice, [switch]$NoShortcut)
 
 . "$PSScriptRoot\_common.ps1"
 

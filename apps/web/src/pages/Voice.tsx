@@ -9,7 +9,8 @@ import {
 } from "../lib/api";
 import { micErrorMessage } from "../lib/audio";
 import { MicCapture, canSelectOutput, listDevices } from "../lib/mic";
-import { browserVoice, cleanForSpeech, matchWakeWord } from "../lib/speech";
+import { browserVoice, cleanForSpeech, effectiveSttEngine, isDesktopApp, matchWakeWord } from "../lib/speech";
+import { SttSetup } from "../components/SttSetup";
 
 type Phase = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
 
@@ -72,7 +73,7 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
   const s = status.data;
   const prefs = settings.data?.preferences;
   const lang = s?.preferences.language ?? "es-AR";
-  const sttLocal = (s?.preferences.voice_stt_engine ?? "local") === "local";
+  const sttLocal = effectiveSttEngine(s?.preferences.voice_stt_engine) === "local";
   const ttsLocal = (s?.preferences.voice_tts_engine ?? "local") === "local";
   const sttReady = sttLocal ? !!s?.stt.installed && !!s?.stt.model_ready : browserVoice.sttAvailable();
   const ttsReady = ttsLocal ? !!s?.tts.installed && !!s?.tts.model_ready : browserVoice.ttsAvailable();
@@ -207,7 +208,7 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
 
   async function talk() {
     if (busyRef.current) { stopAll(); return; }
-    if (!sttReady) { setError(sttLocal ? "Primero descargá el modelo de reconocimiento de voz (abajo)." : "Este navegador no ofrece reconocimiento de voz."); return; }
+    if (!sttReady) { setError(sttLocal ? "Primero descargá el modelo de reconocimiento de voz con el botón «Descargar ahora»." : "Este navegador no ofrece reconocimiento de voz."); return; }
     setError(null);
     setInfo(null);
     busyRef.current = true;
@@ -267,7 +268,7 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
       return;
     }
     if (!s?.preferences.voice_handsfree_consent) { setConsentOpen(true); return; }
-    if (!(s.preferences.voice_stt_engine === "local" && s.stt.model_ready)) {
+    if (!(sttLocal && s.stt.model_ready)) {
       setError("El modo manos libres necesita el reconocimiento local (Whisper) descargado, para que el audio no salga de tu equipo.");
       return;
     }
@@ -316,6 +317,7 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
       <PageHeader title="Voz" subtitle="Hablá con KAI y escuchá sus respuestas. Español de Argentina por defecto." />
       {s && <Notice>{s.privacy} En «manos libres», sólo se procesa lo que empieza con «Hey KAI»; el resto se descarta.</Notice>}
       {error && <Notice tone="danger">{error}</Notice>}
+      {sttLocal && <SttSetup status={s} onReload={status.reload} />}
       {info && <Notice tone="warn">{info}</Notice>}
 
       <section className="panel flex flex-col items-center gap-5 p-8">
@@ -367,7 +369,9 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
         <Card title="Reconocimiento de voz">
           <EngineChooser
             local={s?.stt} useLocal={sttLocal} browserOk={browserVoice.sttAvailable()}
-            browserNote="Usa el servicio del navegador (Google/Microsoft): el audio sale de tu equipo y necesita Internet."
+            browserNote={isDesktopApp()
+              ? "La app de escritorio no trae el servicio de reconocimiento del navegador: usá el local."
+              : "Usa el servicio del navegador (Google/Microsoft): el audio sale de tu equipo y necesita Internet."}
             onChoose={(v) => void savePrefs({ voice_stt_engine: v })}
             onDownload={() => void download("stt")} download={s?.downloads.stt}
           />
@@ -470,7 +474,7 @@ function EngineChooser({ local, useLocal, browserOk, browserNote, onChoose, onDo
       <label className="flex items-start gap-2">
         <input type="radio" className="mt-1" checked={!useLocal} disabled={!browserOk} onChange={() => onChoose("browser")} />
         <span>
-          Navegador {!browserOk && <Badge>No disponible en este navegador</Badge>}
+          Navegador {!browserOk && <Badge>{isDesktopApp() ? "No disponible en la app" : "No disponible en este navegador"}</Badge>}
           <span className="block text-xs text-muted">{browserNote}</span>
         </span>
       </label>

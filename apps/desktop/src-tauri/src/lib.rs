@@ -22,6 +22,8 @@ use tauri_plugin_shell::ShellExt;
 const PORT: u16 = 8765;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(90);
 const SHORTCUT: &str = "ctrl+alt+k";
+/// Código con el que KAI Core sale cuando se cierra para instalar una actualización (ver backend/app/core/updates.py).
+const UPDATE_EXIT_CODE: i32 = 75;
 
 struct Sidecar {
     child: Mutex<Option<CommandChild>>,
@@ -106,7 +108,11 @@ fn start_sidecar(app: &AppHandle) -> Result<(), String> {
                     log::debug!("kai-core: {}", String::from_utf8_lossy(&line).trim_end());
                 }
                 CommandEvent::Terminated(payload) => {
-                    if !QUITTING.load(Ordering::SeqCst) {
+                    if payload.code == Some(UPDATE_EXIT_CODE) {
+                        // KAI Core se cerró para actualizarse: el ayudante instala la versión nueva y reabre KAI.
+                        QUITTING.store(true, Ordering::SeqCst);
+                        show_error(&handle, "Actualizando KAI AI…<br>La app se cierra y vuelve a abrirse sola en unos segundos.");
+                    } else if !QUITTING.load(Ordering::SeqCst) {
                         show_error(
                             &handle,
                             &format!(

@@ -18,6 +18,7 @@ import { FilesPage } from "./pages/Files";
 import { DevicesPage } from "./pages/Devices";
 import { IntegrationsPage } from "./pages/Integrations";
 import { RoutinesPage } from "./pages/Routines";
+import { UpdateButton } from "./components/UpdateButton";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -90,7 +91,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto px-2 pb-1 text-[11px] text-muted">KAI AI · v0.8</div>
+        <UpdateButton version="0.9.0" />
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">

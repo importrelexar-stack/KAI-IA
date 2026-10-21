@@ -14,12 +14,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api.v1 import automation, chat, cowork, devices, integrations, memory, routines, settings as settings_api, system, tasks, voice
+from app.api.v1 import automation, chat, cowork, devices, integrations, memory, routines, settings as settings_api, system, tasks, updates, voice
 from app.core.config import Settings, get_settings
 from app.core.context import AppContext, ProviderFactory, default_provider_factory
 from app.core.errors import KaiError, kai_error_handler
 from app.core.logging import setup_logging
 from app.core.state import EventBus, StateManager
+from app.core.updates import Updater
 from app.cowork.bridge import CoworkBridge
 from app.database.session import Database
 from app.routines.runner import scheduler_loop
@@ -64,6 +65,7 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
         chat_limiter=RateLimiter(settings.chat_rate_limit_per_minute),
         provider_factory=provider_factory or default_provider_factory,
     )
+    ctx.updater = Updater()
     ctx.mcp = McpManager(ctx.secrets, settings.logs_dir,
                          oauth_redirect_uri=f"http://127.0.0.1:{settings.port}/api/v1/integrations/oauth/callback")
 
@@ -114,7 +116,7 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
                        allow_headers=["Content-Type", "X-KAI-Token", "Authorization"])
 
     for r in (system.router, chat.router, settings_api.router, tasks.router, cowork.router, voice.router, memory.router,
-              automation.router, devices.router, integrations.router, routines.router):
+              automation.router, devices.router, integrations.router, routines.router, updates.router):
         app.include_router(r, prefix="/api/v1")
 
     _mount_frontend(app, settings.web_dist)
@@ -185,7 +187,18 @@ def run() -> None:
         from app.core.watchdog import watch_parent
 
         watch_parent(int(parent), app.state.request_shutdown)
+    updating = {"on": False}
+
+    def _after_update_launch() -> None:
+        updating["on"] = True
+        app.state.request_shutdown()
+
+    app.state.ctx.updater.after_launch = _after_update_launch
     server.run()
+    if updating["on"]:
+        from app.core.updates import UPDATE_EXIT_CODE
+
+        sys.exit(UPDATE_EXIT_CODE)
 
 
 if __name__ == "__main__":

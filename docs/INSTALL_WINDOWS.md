@@ -8,6 +8,14 @@
 3. Abrí **KAI AI** con el acceso directo del escritorio o desde el menú Inicio (el instalador crea los
    dos). La primera vez tarda unos segundos en iniciar.
 4. Configurá tu clave de API en Configuración.
+5. Para hablarle a KAI, la primera vez tocá **Descargar ahora** en la pantalla Voz (modelo de
+   reconocimiento local, ~465 MB, una sola vez). En la app de escritorio el reconocimiento «del navegador»
+   no está disponible (el componente WebView2 de Windows no trae ese servicio), por eso se usa el local.
+
+**Actualizar:** no hace falta volver a descargar el instalador. Cuando hay una versión nueva, abajo a la
+izquierda aparece **Actualizar a vX.Y.Z**: KAI descarga el instalador oficial, verifica su SHA-256, se
+cierra, se actualiza y se vuelve a abrir solo (tus datos se conservan). El ícono ↻ al lado de la versión
+busca actualizaciones en el momento.
 
 Datos en `%LOCALAPPDATA%\KAI`. Para salir: ícono de KAI en la bandeja → Salir. Atajo: Ctrl+Alt+K.
 Para desinstalar: Configuración de Windows → Aplicaciones → KAI AI (los datos de `%LOCALAPPDATA%\KAI`
@@ -70,6 +78,11 @@ Si existe en `.env`, tiene prioridad y la interfaz no permite cambiarla.
 
 En **Configuración** también elegís modelo, esfuerzo de razonamiento, máximo de tokens, contexto enviado y
 **presupuesto diario de tokens** (por defecto 500.000; 0 = sin límite).
+
+## Actualizar (instalación desde el código)
+
+Cerrá KAI y ejecutá `actualizar.bat`: detiene KAI, hace `git pull --ff-only` y reinstala dependencias. Si
+modificaste archivos de la carpeta, no actualiza (no pisa tus cambios) y te lo indica.
 
 ## 4. Voz
 

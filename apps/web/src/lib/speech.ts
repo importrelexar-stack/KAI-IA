@@ -59,8 +59,23 @@ function recognitionCtor(): (new () => RecognitionLike) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+/** App de escritorio (WebView2 de Windows): trae el reconocimiento «webkitSpeechRecognition», pero sin el servicio
+ * de Google detrás, así que siempre falla con «network». Ahí sólo sirve el reconocimiento local (Whisper). */
+export function isDesktopApp(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as unknown as { chrome?: { webview?: unknown }; __TAURI_INTERNALS__?: unknown };
+  return !!w.chrome?.webview || !!w.__TAURI_INTERNALS__;
+}
+
+let browserSttFailed = false;
+
+/** Motor de reconocimiento a usar de verdad: si el del navegador no anda en este equipo, se usa el local. */
+export function effectiveSttEngine(pref: string | undefined): "local" | "browser" {
+  return pref === "browser" && browserVoice.sttAvailable() ? "browser" : "local";
+}
+
 export const browserVoice = {
-  sttAvailable: () => typeof window !== "undefined" && recognitionCtor() !== null,
+  sttAvailable: () => typeof window !== "undefined" && !browserSttFailed && !isDesktopApp() && recognitionCtor() !== null,
   ttsAvailable: () => typeof window !== "undefined" && "speechSynthesis" in window,
 
   /** Reconoce una frase con el servicio del navegador (el audio sale del equipo). */
@@ -81,9 +96,10 @@ export const browserVoice = {
         const msg: Record<string, string> = {
           "not-allowed": "No hay permiso para usar el micrófono.",
           "no-speech": "No te escuché. Probá de nuevo.",
-          network: "El reconocimiento del navegador necesita Internet.",
+          network: "El reconocimiento del navegador no está disponible en este equipo. A partir de ahora KAI usa el reconocimiento local (Whisper).",
           "audio-capture": "No se encontró el micrófono.",
         };
+        if (e.error === "network") browserSttFailed = true; // desde ahora se usa el reconocimiento local
         if (e.error !== "aborted") reject(new Error(msg[e.error] ?? `Error de reconocimiento: ${e.error}`));
       };
       rec.onend = () => resolve(text.trim());

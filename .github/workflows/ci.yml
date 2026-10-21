@@ -94,6 +94,15 @@ jobs:
           Start-Sleep -Seconds 1
           try { Invoke-RestMethod http://127.0.0.1:8765/api/v1/health -TimeoutSec 2; throw "sigue activo" } catch { if ($_.Exception.Message -eq 'sigue activo') { throw } }
           Write-Host "Scripts de Windows OK"
+      - name: update.ps1 no pisa cambios locales
+        shell: powershell
+        run: |
+          Add-Content README.md "`ncambio local de prueba"
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\update.ps1
+          $code = $LASTEXITCODE
+          git checkout -- README.md
+          if ($code -ne 1) { throw "update.ps1 debió negarse (código $code)" }
+          Write-Host "update.ps1 se negó a actualizar con cambios locales: OK"
       - name: Registros si falló
         if: failure()
         shell: powershell
