@@ -170,7 +170,9 @@ def helper_script(installer: Path, app_pid: str, app_exe: Path) -> str:
 
 def launch_installer(path: Path) -> None:
     """Deja corriendo el ayudante en un proceso independiente (sigue aunque KAI se cierre)."""
-    app_exe = Path(sys.executable).with_name("kai-desktop.exe")
+    here = Path(sys.executable).parent  # <instalación>\kai-core\kai-core.exe (antes: junto a la app)
+    app_exe = next((d / "kai-desktop.exe" for d in (here.parent, here) if (d / "kai-desktop.exe").exists()),
+                   here.parent / "kai-desktop.exe")
     script = path.with_name("instalar-actualizacion.cmd")
     script.write_text(helper_script(path, os.environ.get("KAI_PARENT_PID", ""), app_exe), encoding="mbcs"
                       if sys.platform == "win32" else "utf-8")

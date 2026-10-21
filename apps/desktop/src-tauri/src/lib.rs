@@ -20,7 +20,8 @@ use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
 const PORT: u16 = 8765;
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(90);
+// Margen amplio: el primer arranque tras instalar puede demorar mientras el antivirus revisa los archivos.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 const SHORTCUT: &str = "ctrl+alt+k";
 /// Código con el que KAI Core sale cuando se cierra para instalar una actualización (ver backend/app/core/updates.py).
 const UPDATE_EXIT_CODE: i32 = 75;
@@ -31,6 +32,8 @@ struct Sidecar {
 }
 
 static QUITTING: AtomicBool = AtomicBool::new(false);
+/// KAI Core terminó antes de responder: no tiene sentido seguir esperando.
+static CORE_EXITED: AtomicBool = AtomicBool::new(false);
 
 fn kai_url() -> String {
     format!("http://127.0.0.1:{PORT}/")
@@ -87,10 +90,21 @@ fn open_kai(app: &AppHandle) {
 
 fn start_sidecar(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<Sidecar>();
+    // KAI Core se instala como carpeta (kai-core\kai-core.exe + _internal) junto a la app.
+    let exe_name = if cfg!(windows) { "kai-core.exe" } else { "kai-core" };
+    let core = app
+        .path()
+        .resource_dir()
+        .map_err(|e| e.to_string())?
+        .join("kai-core")
+        .join(exe_name);
+    if !core.is_file() {
+        return Err(format!("no se encontró {}. Reinstalá KAI.", core.display()));
+    }
     let cmd = app
         .shell()
-        .sidecar("kai-core")
-        .map_err(|e| e.to_string())?
+        .command(core.to_string_lossy().to_string())
+        .current_dir(core.parent().unwrap_or(&core).to_path_buf())
         .env("KAI_PORT", PORT.to_string())
         .env("KAI_SHUTDOWN_TOKEN", state.shutdown_token.clone())
         // Si la app se cierra de golpe, KAI Core lo detecta y se detiene (no queda huérfano).
@@ -117,6 +131,7 @@ fn start_sidecar(app: &AppHandle) -> Result<(), String> {
                         QUITTING.store(true, Ordering::SeqCst);
                         show_error(&handle, "Actualizando KAI AI…<br>La app se cierra y vuelve a abrirse sola en unos segundos.");
                     } else if !QUITTING.load(Ordering::SeqCst) {
+                        CORE_EXITED.store(true, Ordering::SeqCst);
                         show_error(
                             &handle,
                             &format!(
@@ -159,7 +174,7 @@ fn wait_and_open(app: AppHandle, spawned: bool) {
                 open_kai(&app);
                 return;
             }
-            if QUITTING.load(Ordering::SeqCst) {
+            if QUITTING.load(Ordering::SeqCst) || CORE_EXITED.load(Ordering::SeqCst) {
                 return;
             }
             std::thread::sleep(Duration::from_millis(300));

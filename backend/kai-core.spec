@@ -1,5 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Empaqueta KAI Core (backend + interfaz compilada) en un ejecutable para la app de escritorio.
+# Empaqueta KAI Core (backend + interfaz compilada) para la app de escritorio, como CARPETA
+# (dist/kai-core/kai-core.exe + dist/kai-core/_internal). No como un único .exe: ése se descomprime entero en
+# %TEMP% en cada arranque (lento con antivirus, y frágil: «Failed to load Python DLL»).
 #   pyinstaller kai-core.spec --noconfirm
 # Requiere apps/web/dist compilada. Si están instalados los motores de voz, también se incluyen.
 import importlib.util
@@ -28,10 +30,10 @@ for pkg in ("faster_whisper", "ctranslate2", "piper", "onnxruntime", "av", "toke
         binaries += b
         hiddenimports += h
 
-name = os.environ.get("KAI_SIDECAR_NAME", "kai-core")
+name = "kai-core"
 a = Analysis(["kai_core.py"], pathex=[str(ROOT)], binaries=binaries, datas=datas, hiddenimports=hiddenimports,
              excludes=["tkinter", "pytest", "matplotlib"], noarchive=False)
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name=name, debug=False, strip=False, upx=False,
-          console=sys.platform != "win32" or os.environ.get("KAI_SIDECAR_CONSOLE") == "1",
-          runtime_tmpdir=None)
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name=name, debug=False, strip=False, upx=False,
+          console=sys.platform != "win32" or os.environ.get("KAI_SIDECAR_CONSOLE") == "1")
+coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name=name)

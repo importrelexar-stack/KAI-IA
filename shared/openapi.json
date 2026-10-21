@@ -3,7 +3,7 @@
   "info": {
     "title": "KAI Core API",
     "description": "API local de KAI AI. Escucha sólo en 127.0.0.1 por defecto.",
-    "version": "0.9.3"
+    "version": "0.9.4"
   },
   "paths": {
     "/api/v1/health": {

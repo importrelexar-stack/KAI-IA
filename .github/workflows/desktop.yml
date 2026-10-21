@@ -35,16 +35,16 @@ jobs:
           npm ci --no-fund --no-audit
           npm run build
 
-      - name: KAI Core empaquetado (sidecar)
+      - name: KAI Core empaquetado (carpeta)
         working-directory: backend
-        env:
-          KAI_SIDECAR_NAME: kai-core-x86_64-pc-windows-msvc
         run: |
           # Número de build para el botón «Actualizar» (compara con latest.json de la release)
           Set-Content -Encoding utf8 app\_build.py "BUILD = $env:GITHUB_RUN_NUMBER`nSHA = `"$env:GITHUB_SHA`"`n"
           python -m pip install -r requirements.txt -r requirements-voice.txt "pyinstaller>=6.10,<7"
           pyinstaller kai-core.spec --noconfirm
-          Copy-Item dist\kai-core-x86_64-pc-windows-msvc.exe ..\apps\desktop\src-tauri\binaries\
+          # La app lo instala como carpeta junto a ella (recursos de Tauri: kai-core\)
+          Copy-Item dist\kai-core\* ..\apps\desktop\src-tauri\kai-core\ -Recurse -Force
+          if (-not (Test-Path ..\apps\desktop\src-tauri\kai-core\kai-core.exe)) { throw "falta kai-core.exe" }
 
       - name: Prueba del sidecar (demo, voz incluida)
         shell: powershell
@@ -53,13 +53,15 @@ jobs:
           $env:LOCALAPPDATA = "$env:RUNNER_TEMP\kai-sidecar"
           $env:KAI_DEMO_MODE = 'true'
           $env:KAI_PORT = '8799'
-          $p = Start-Process apps\desktop\src-tauri\binaries\kai-core-x86_64-pc-windows-msvc.exe -PassThru
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $p = Start-Process apps\desktop\src-tauri\kai-core\kai-core.exe -PassThru
           $ok = $false
           for ($i = 0; $i -lt 120; $i++) {
             Start-Sleep -Milliseconds 500
             try { if ((Invoke-RestMethod http://127.0.0.1:8799/api/v1/health).status -eq 'ok') { $ok = $true; break } } catch {}
           }
           if (-not $ok) { Get-ChildItem -Recurse $env:LOCALAPPDATA | Out-Host; throw "el sidecar no respondió" }
+          Write-Host "KAI Core respondió en $([math]::Round($sw.Elapsed.TotalSeconds, 1)) s"
           $page = Invoke-WebRequest http://127.0.0.1:8799/ -UseBasicParsing
           if ($page.Content -notmatch '<div id="root">') { throw "la interfaz no viene embebida" }
           $voice = Invoke-RestMethod http://127.0.0.1:8799/api/v1/voice/status
@@ -90,7 +92,7 @@ jobs:
           # Como si la abriera el ayudante de actualización: entorno heredado de un KAI Core que ya se cerró
           # (antes provocaba «Failed to load Python DLL ... _MEI...\python312.dll»).
           $env:_PYI_APPLICATION_HOME_DIR = "$env:RUNNER_TEMP\_MEI000000gone"
-          $env:_PYI_ARCHIVE_FILE = Join-Path $exe.DirectoryName 'kai-core.exe'
+          $env:_PYI_ARCHIVE_FILE = Join-Path $exe.DirectoryName 'kai-core\kai-core.exe'
           $env:_PYI_PARENT_PROCESS_LEVEL = '1'
           $app = Start-Process $exe.FullName -PassThru
           Remove-Item Env:_PYI_APPLICATION_HOME_DIR, Env:_PYI_ARCHIVE_FILE, Env:_PYI_PARENT_PROCESS_LEVEL
@@ -117,6 +119,8 @@ jobs:
           $installed = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter kai-desktop.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $installed) { throw "no se encontró kai-desktop.exe instalado en %LOCALAPPDATA%" }
           Write-Host "Instalado en: $($installed.FullName)"
+          if (-not (Test-Path (Join-Path $installed.DirectoryName 'kai-core\kai-core.exe'))) { throw "el instalador no copió la carpeta kai-core" }
+          if (-not (Test-Path (Join-Path $installed.DirectoryName 'kai-core\_internal'))) { throw "falta kai-core\_internal" }
           $ws = New-Object -ComObject WScript.Shell
           $desk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'KAI AI.lnk'
           $menu = Get-ChildItem ([Environment]::GetFolderPath('Programs')) -Recurse -Filter 'KAI AI.lnk' -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -124,6 +128,19 @@ jobs:
           if (-not (Test-Path $desk)) { throw "el instalador no creó el acceso directo en el escritorio" }
           if ($ws.CreateShortcut($desk).TargetPath -ine $installed.FullName) { throw "el acceso del escritorio apunta a $($ws.CreateShortcut($desk).TargetPath)" }
           Write-Host "Accesos directos OK: escritorio y menú Inicio -> $($installed.FullName)"
+          # La app instalada arranca KAI Core desde su carpeta kai-core\ y responde
+          $env:KAI_DEMO_MODE = 'true'
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $app = Start-Process $installed.FullName -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 180; $i++) {
+            Start-Sleep -Milliseconds 500
+            try { if ((Invoke-RestMethod http://127.0.0.1:8765/api/v1/health).status -eq 'ok') { $ok = $true; break } } catch {}
+          }
+          if (-not $ok) { Get-Content "$env:LOCALAPPDATA\KAI\logs\kai.log" -Tail 60 -ErrorAction SilentlyContinue | Out-Host; throw "la app instalada no inició KAI Core" }
+          Write-Host "App instalada OK: KAI Core respondió en $([math]::Round($sw.Elapsed.TotalSeconds, 1)) s"
+          taskkill /PID $app.Id /T /F | Out-Null
+          Get-Process kai-core -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Publicar instalador
         uses: actions/upload-artifact@v4

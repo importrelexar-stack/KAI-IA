@@ -5,7 +5,7 @@ instalar Python ni Node.js).
 
 ## Qué hace
 
-- Inicia KAI Core (sidecar `kai-core`, empaquetado con PyInstaller con la interfaz y los motores de voz
+- Inicia KAI Core (carpeta `kai-core\` instalada junto a la app, empaquetada con PyInstaller con la interfaz y los motores de voz
   locales) y muestra la interfaz cuando responde. Si ya hay un KAI corriendo en el puerto 8765 (por
   ejemplo, la instalación de desarrollo), lo reutiliza.
 - Datos en `%LOCALAPPDATA%\KAI` (base, registros, modelos de voz). La clave de API se guarda en el
@@ -34,9 +34,8 @@ Windows 11).
 cd apps\web; npm ci; npm run build; cd ..\..
 cd backend
 python -m pip install -r requirements.txt -r requirements-voice.txt "pyinstaller>=6.10,<7"
-$env:KAI_SIDECAR_NAME = "kai-core-x86_64-pc-windows-msvc"
-pyinstaller kai-core.spec --noconfirm
-Copy-Item dist\kai-core-x86_64-pc-windows-msvc.exe ..\apps\desktop\src-tauri\binaries\
+pyinstaller kai-core.spec --noconfirm          # genera la carpeta dist\kai-core\
+Copy-Item dist\kai-core\* ..\apps\desktop\src-tauri\kai-core\ -Recurse -Force
 cd ..\apps\desktop
 npm ci
 npx tauri build      # instalador en src-tauri\target\release\bundle\nsis\

@@ -1,6 +1,8 @@
-# Sidecar generado por el build (PyInstaller)
+# KAI Core generado por el build (PyInstaller, carpeta)
 src-tauri/binaries/*
 !src-tauri/binaries/.gitkeep
+src-tauri/kai-core/*
+!src-tauri/kai-core/.gitkeep
 src-tauri/target/
 src-tauri/gen/
 node_modules/
