@@ -74,7 +74,7 @@ jobs:
           if (-not $apps.available -or $apps.total -lt 1) { throw "no se encontraron aplicaciones del menú Inicio" }
           Write-Host "Aplicaciones del menú Inicio: $($apps.total) (p. ej. $(($apps.apps | Select-Object -First 5) -join ', '))"
           Write-Host "Sidecar OK (voz: $($voice.stt.name) / $($voice.tts.name))"
-          taskkill /PID $p.Id /T /F | Out-Null
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: App Tauri + instalador NSIS
         working-directory: apps/desktop
@@ -106,7 +106,7 @@ jobs:
           $r = Invoke-RestMethod -Method Post http://127.0.0.1:8765/api/v1/chat -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
           if ($r.assistant_message.content -notmatch 'DEMOSTRACI') { throw "respuesta inesperada" }
           Write-Host "App OK: KAI Core iniciado por la app y respondiendo"
-          taskkill /PID $app.Id /T /F | Out-Null
+          Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
           Get-Process kai-core -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Instalador NSIS (silencioso) y accesos directos
@@ -139,7 +139,7 @@ jobs:
           }
           if (-not $ok) { Get-Content "$env:LOCALAPPDATA\KAI\logs\kai.log" -Tail 60 -ErrorAction SilentlyContinue | Out-Host; throw "la app instalada no inició KAI Core" }
           Write-Host "App instalada OK: KAI Core respondió en $([math]::Round($sw.Elapsed.TotalSeconds, 1)) s"
-          taskkill /PID $app.Id /T /F | Out-Null
+          Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
           Get-Process kai-core -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Publicar instalador
