@@ -46,6 +46,9 @@ EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 # cuando un clasificador de seguridad rechaza la solicitud.
 _FALLBACK_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"}
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
+# Modo rápido: el mismo modelo, hasta ~2,5 veces más tokens por segundo, a precio premium.
+_FAST_MODELS = {"claude-opus-5-5", "claude-opus-5"}
+_FAST_BETA = "fast-mode-2026-02-01"
 
 
 @dataclass(frozen=True)
@@ -96,6 +99,9 @@ class AnthropicProvider(AIProvider):
         if options.use_fallbacks and options.model in _FALLBACK_MODELS and not self._minimal_requests:
             kwargs["betas"] = [_FALLBACK_BETA]
             kwargs["fallbacks"] = "default"
+        if options.fast and options.model in _FAST_MODELS and not self._minimal_requests:
+            kwargs["betas"] = [*kwargs.get("betas", []), _FAST_BETA]
+            kwargs["speed"] = "fast"
         if self._minimal_requests:
             kwargs.pop("cache_control", None)
         tool_defs: list[dict[str, Any]] = list(tools or []) if executor else []
@@ -178,7 +184,7 @@ class AnthropicProvider(AIProvider):
             except anthropic.BadRequestError as e:
                 # Si la API rechaza una función opcional (reintento en servidor o caché),
                 # se reintenta una vez sin ellas y se recuerda para las próximas solicitudes.
-                optional = [k for k in ("fallbacks", "betas", "cache_control") if k in kwargs]
+                optional = [k for k in ("fallbacks", "betas", "cache_control", "speed") if k in kwargs]
                 if attempt == 1 and optional and not emitted:
                     log.warning("Anthropic rechazó funciones opcionales (%s); se reintenta sin ellas: %s",
                                 ", ".join(optional), _api_message(e))
@@ -197,6 +203,14 @@ class AnthropicProvider(AIProvider):
                 raise ProviderError(f"El modelo '{options.model}' no existe o no está disponible para tu cuenta.",
                                     code="model_not_found", status_code=404) from e
             except anthropic.RateLimitError as e:
+                # El modo rápido tiene su propio límite: si se agota, se responde a velocidad normal.
+                if attempt == 1 and "speed" in kwargs and not emitted:
+                    log.warning("Límite del modo rápido alcanzado; se responde a velocidad normal")
+                    betas = [b for b in kwargs.get("betas", []) if b != _FAST_BETA]
+                    kwargs = {k: v for k, v in kwargs.items() if k not in ("speed", "betas")}
+                    if betas:
+                        kwargs["betas"] = betas
+                    continue
                 raise ProviderError("Anthropic limitó las solicitudes (429). Esperá unos segundos y reintentá.",
                                     code="rate_limited", status_code=429) from e
             except anthropic.APIStatusError as e:

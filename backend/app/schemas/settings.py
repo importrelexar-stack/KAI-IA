@@ -33,6 +33,8 @@ class Preferences(BaseModel):
     web_search_enabled: bool = False
     web_fetch_enabled: bool = False
     max_tool_iterations: int = Field(default=6, ge=1, le=15)
+    # Modo rápido de Claude (Opus 5.5): respuestas más veloces, cuesta el doble por token.
+    fast_mode: bool = False
 
     @field_validator("model")
     @classmethod
@@ -64,6 +66,7 @@ class PreferencesUpdate(BaseModel):
     web_search_enabled: bool | None = None
     web_fetch_enabled: bool | None = None
     max_tool_iterations: int | None = Field(default=None, ge=1, le=15)
+    fast_mode: bool | None = None
 
     @field_validator("model")
     @classmethod

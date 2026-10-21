@@ -10,6 +10,11 @@ on:
 permissions:
   contents: write
 
+# Un push nuevo reemplaza al anterior: así la release siempre queda con el último build.
+concurrency:
+  group: desktop-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows-installer:
     runs-on: windows-latest

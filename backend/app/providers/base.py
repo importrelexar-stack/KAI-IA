@@ -32,6 +32,7 @@ class GenerationOptions:
     timeout_seconds: float = 240.0
     web_search: bool = False
     web_fetch: bool = False
+    fast: bool = False  # modo rápido de Claude (sólo Opus 5.5 / Opus 5; cuesta el doble por token)
 
 
 @dataclass(frozen=True)

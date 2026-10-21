@@ -88,6 +88,12 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
             log.info("KAI Core %s iniciado. Clave de API desde: %s", __version__, source)
         await ctx.mcp.start(load_mcp_configs_safe())
         scheduler = asyncio.create_task(scheduler_loop(ctx), name="kai-routines") if settings.routines_enabled else None
+        # Lista de aplicaciones del menú Inicio lista de antemano: «abrí Excel» responde al instante.
+        from app.automation.apps_catalog import catalog
+
+        warm = asyncio.create_task(asyncio.to_thread(catalog.apps), name="kai-apps-warm")
+        ctx.background_tasks.add(warm)
+        warm.add_done_callback(ctx.background_tasks.discard)
         yield
         for t in [scheduler, *ctx.background_tasks]:
             if t is not None:

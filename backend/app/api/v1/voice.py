@@ -79,6 +79,7 @@ def _check_rate(request: Request) -> None:
 @router.get("/status", response_model=VoiceStatus, summary="Motores de voz, modelos y preferencias")
 def voice_status(voice: Voice, db: Db) -> VoiceStatus:
     p = get_preferences(db)
+    voice.warm(p.whisper_model, p.piper_voice)
     return VoiceStatus(
         stt=_engine_out(voice.stt(p.whisper_model).status()),
         tts=_engine_out(voice.tts(p.piper_voice).status()),

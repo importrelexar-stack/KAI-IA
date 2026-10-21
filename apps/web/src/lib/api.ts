@@ -121,6 +121,7 @@ export interface Preferences {
   web_search_enabled: boolean;
   web_fetch_enabled: boolean;
   max_tool_iterations: number;
+  fast_mode: boolean;
 }
 
 export interface ApiKeyStatus {

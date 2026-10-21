@@ -127,3 +127,39 @@ describe("reconocimiento en la app de escritorio", () => {
     expect(effectiveSttEngine("browser")).toBe("local");
   });
 });
+
+describe("voz frase por frase", () => {
+  it("corta frases completas y no dentro de código", async () => {
+    const { nextCut } = await import("../lib/sentenceSpeaker");
+    expect(nextCut("Hola.")).toBe(-1); // muy corta todavía
+    const t = "Listo, abrí Excel en tu equipo. Ahora";
+    expect(t.slice(0, nextCut(t))).toBe("Listo, abrí Excel en tu equipo. ");
+    expect(nextCut("El total es 3.5 millones de pesos")).toBe(-1); // el punto decimal no corta
+    expect(nextCut("```\nprint('hola mundo largo largo')\n")).toBe(-1);
+  });
+
+  it("empieza a hablar antes de que termine la respuesta y respeta el orden", async () => {
+    const { SentenceSpeaker } = await import("../lib/sentenceSpeaker");
+    const log: string[] = [];
+    const ctrl = new AbortController();
+    let started = 0;
+    const sp = new SentenceSpeaker<string>(async (t) => t, async (t) => { log.push(t); }, ctrl.signal, () => started++);
+    sp.push("Primera frase bastante completa. Segu");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(log).toEqual(["Primera frase bastante completa."]); // ya habló sin esperar el final
+    sp.push("nda frase que termina sin punto");
+    await sp.finish();
+    expect(log).toEqual(["Primera frase bastante completa.", "Segunda frase que termina sin punto"]);
+    expect(started).toBe(1);
+  });
+
+  it("al interrumpir no sigue hablando", async () => {
+    const { SentenceSpeaker } = await import("../lib/sentenceSpeaker");
+    const log: string[] = [];
+    const ctrl = new AbortController();
+    const sp = new SentenceSpeaker<string>(async (t) => t, async (t) => { log.push(t); ctrl.abort(); }, ctrl.signal);
+    sp.push("Una frase que ya suena entera. Otra frase que no debería sonar. ");
+    await sp.finish();
+    expect(log).toHaveLength(1);
+  });
+});

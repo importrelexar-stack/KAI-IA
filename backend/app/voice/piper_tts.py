@@ -70,6 +70,10 @@ class PiperTTS(TextToSpeech):
         self.models_dir.mkdir(parents=True, exist_ok=True)
         download_voice(self.voice, self.models_dir)
 
+    def warm(self) -> None:
+        with self._lock:
+            self._load()
+
     def _load(self):  # type: ignore[no-untyped-def]
         if self._voice is None:
             if not self.installed():

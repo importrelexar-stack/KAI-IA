@@ -238,3 +238,28 @@ async def test_wire_web_tools_are_declared():
     tools = {t["name"]: t for t in bodies[0]["tools"]}
     assert tools["web_search"]["type"] == "web_search_20260209"
     assert tools["web_fetch"]["type"] == "web_fetch_20260209" and tools["web_fetch"]["max_uses"] == 5
+
+
+async def test_wire_fast_mode_and_rate_limit_fallback():
+    bodies: list[dict] = []
+    betas: list[str] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        body = json.loads(request.content)
+        bodies.append(body)
+        betas.append(request.headers.get("anthropic-beta", ""))
+        if body.get("speed") == "fast" and len(bodies) == 1:
+            return httpx2.Response(429, json={"type": "error", "error": {"type": "rate_limit_error",
+                                                                       "message": "fast limit"}})
+        return httpx2.Response(200, content=_message_stream(["ok"]), headers={"content-type": "text/event-stream"})
+
+    events = await _run(_provider(handler), fast=True)
+    assert bodies[0]["speed"] == "fast" and "fast-mode-2026-02-01" in betas[0]
+    # Al agotarse el límite del modo rápido, se responde igual a velocidad normal
+    assert "speed" not in bodies[1] and "fast-mode-2026-02-01" not in betas[1]
+    assert isinstance(events[-1], Completed) and "".join(e.text for e in events if isinstance(e, TextDelta)) == "ok"
+
+    plain: list[dict] = []
+    await _run(_provider(lambda r: (plain.append(json.loads(r.content)), httpx2.Response(
+        200, content=_message_stream(["ok"]), headers={"content-type": "text/event-stream"}))[1]))
+    assert "speed" not in plain[0]

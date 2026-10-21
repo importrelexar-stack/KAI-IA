@@ -9,8 +9,9 @@ import {
 } from "../lib/api";
 import { micErrorMessage } from "../lib/audio";
 import { MicCapture, canSelectOutput, listDevices } from "../lib/mic";
-import { browserVoice, cleanForSpeech, effectiveSttEngine, isDesktopApp, matchWakeWord } from "../lib/speech";
+import { browserVoice, effectiveSttEngine, isDesktopApp, matchWakeWord } from "../lib/speech";
 import { SttSetup } from "../components/SttSetup";
+import { SentenceSpeaker } from "../lib/sentenceSpeaker";
 
 type Phase = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
 
@@ -134,39 +135,56 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [stopAll]);
 
-  async function speak(text: string, signal: AbortSignal) {
-    const clean = cleanForSpeech(text);
-    if (!clean) return;
-    setPhase("speaking");
-    reportVoiceState("speaking");
-    // Si el usuario habla durante la respuesta (manos libres), se interrumpe.
-    if (handsfreeRef.current && micRef.current) micRef.current.monitor(() => abortRef.current?.abort());
-    try {
-      if (ttsLocal && s?.tts.model_ready) {
-        const blob = await synthesize(clean, signal);
-        const url = URL.createObjectURL(blob);
-        const audio = audioRef.current ?? new Audio();
-        audioRef.current = audio;
-        audio.src = url;
-        if (outId && canSelectOutput()) {
-          try { await (audio as HTMLAudioElement & { setSinkId(id: string): Promise<void> }).setSinkId(outId); } catch { /* salida no disponible */ }
-        }
-        await new Promise<void>((resolve, reject) => {
-          const done = () => { URL.revokeObjectURL(url); resolve(); };
-          audio.onended = done;
-          audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No se pudo reproducir el audio.")); };
-          signal.addEventListener("abort", () => { audio.pause(); done(); }, { once: true });
-          audio.play().catch(reject);
-        });
-      } else if (browserVoice.ttsAvailable()) {
-        await browserVoice.speak(clean, lang, signal);
-      }
-    } catch (e) {
-      if ((e as Error).name !== "AbortError") throw e;
-    } finally {
-      micRef.current?.stopMode();
-      reportVoiceState("idle");
+  async function playBlob(blob: Blob, signal: AbortSignal) {
+    const url = URL.createObjectURL(blob);
+    const audio = audioRef.current ?? new Audio();
+    audioRef.current = audio;
+    audio.src = url;
+    if (outId && canSelectOutput()) {
+      try { await (audio as HTMLAudioElement & { setSinkId(id: string): Promise<void> }).setSinkId(outId); } catch { /* salida no disponible */ }
     }
+    await new Promise<void>((resolve, reject) => {
+      const done = () => { URL.revokeObjectURL(url); resolve(); };
+      audio.onended = done;
+      audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No se pudo reproducir el audio.")); };
+      signal.addEventListener("abort", () => { audio.pause(); done(); }, { once: true });
+      audio.play().catch(reject);
+    });
+  }
+
+  /** Voz que habla frase por frase a medida que llega la respuesta (null si no hay voz disponible). */
+  function makeSpeaker(signal: AbortSignal): SentenceSpeaker<unknown> | null {
+    const onStart = () => {
+      setPhase("speaking");
+      reportVoiceState("speaking");
+      // Si el usuario habla durante la respuesta (manos libres), se interrumpe.
+      if (handsfreeRef.current && micRef.current) micRef.current.monitor(() => abortRef.current?.abort());
+    };
+    if (ttsLocal && s?.tts.model_ready) {
+      return new SentenceSpeaker<Blob>((t, sig) => synthesize(t, sig), (b, sig) => playBlob(b, sig), signal, onStart) as SentenceSpeaker<unknown>;
+    }
+    if (browserVoice.ttsAvailable()) {
+      return new SentenceSpeaker<string>(async (t) => t, (t, sig) => browserVoice.speak(t, lang, sig), signal, onStart) as SentenceSpeaker<unknown>;
+    }
+    return null;
+  }
+
+  async function finishSpeaking(speaker: SentenceSpeaker<unknown>) {
+    try {
+      await speaker.finish();
+    } finally {
+      if (speaker.spoke) {
+        micRef.current?.stopMode();
+        reportVoiceState("idle");
+      }
+    }
+  }
+
+  async function speak(text: string, signal: AbortSignal) {
+    const speaker = makeSpeaker(signal);
+    if (!speaker) return;
+    speaker.push(text);
+    await finishSpeaking(speaker);
   }
 
   async function ask(text: string, ctrl: AbortController) {
@@ -174,10 +192,13 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
     setPhase("thinking");
     let answer = "";
     let failure: string | null = null;
+    // KAI empieza a hablar con la primera frase, sin esperar la respuesta completa.
+    const speaker = (s?.preferences.voice_auto_speak ?? true) ? makeSpeaker(ctrl.signal) : null;
     await streamChat(text, convRef.current, (ev) => {
       if (ev.type === "meta") convRef.current = ev.conversation_id;
       else if (ev.type === "delta") {
         answer += ev.text;
+        speaker?.push(ev.text);
         setTurns((t) => [...t.slice(0, -1), { role: "assistant", text: answer }]);
       } else if (ev.type === "error") failure = ev.message;
     }, ctrl.signal, "voice");
@@ -185,7 +206,7 @@ export function VoicePage({ refreshKey }: { refreshKey: number }) {
       setTurns((t) => t.slice(0, -1));
       throw new Error(failure);
     }
-    if (!ctrl.signal.aborted && answer && (s?.preferences.voice_auto_speak ?? true)) await speak(answer, ctrl.signal);
+    if (speaker && !ctrl.signal.aborted) await finishSpeaking(speaker);
   }
 
   async function recognize(ctrl: AbortController, mic?: MicCapture): Promise<string> {

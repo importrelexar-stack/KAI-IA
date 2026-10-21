@@ -95,6 +95,16 @@ export function SettingsPage() {
           <label className="text-sm">Presupuesto diario de tokens (0 = sin límite)
             <input type="number" min={0} className="field mt-1" value={prefs.daily_token_budget} onChange={(e) => setPrefs({ ...prefs, daily_token_budget: Number(e.target.value) })} />
           </label>
+          <label className="flex items-start gap-2 text-sm md:col-span-2">
+            <input type="checkbox" className="mt-1" checked={prefs.fast_mode} onChange={(e) => setPrefs({ ...prefs, fast_mode: e.target.checked })} />
+            <span>
+              Modo rápido (Claude Opus 5.5): escribe hasta 2,5 veces más rápido
+              <span className="block text-xs text-muted">
+                Cuesta el doble por token (US$ 8 / 40 por millón en lugar de 4 / 20). Sólo con Opus 5.5 u Opus 5.
+                Si se agota su límite, KAI responde a velocidad normal.
+              </span>
+            </span>
+          </label>
           <label className="mt-6 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={prefs.use_fallbacks} onChange={(e) => setPrefs({ ...prefs, use_fallbacks: e.target.checked })} />
             Reintento automático con otro modelo si Claude rechaza por seguridad

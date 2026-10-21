@@ -80,6 +80,11 @@ Vinculá el teléfono desde **Dispositivos** (QR de un solo uso, sólo por tu re
 - **Abrir aplicaciones por nombre** («abrí Excel», «abrí la calculadora»): cualquier aplicación del menú Inicio
   de Windows (incluidas las de Microsoft Store), sin parámetros, igual que un clic. Se puede desactivar en
   Archivos → «Aplicaciones que KAI puede abrir» o pasar a «Preguntar» en los permisos por acción.
+  Las órdenes simples («abrí Excel») se resuelven al instante, sin consultar a Claude ni gastar tokens.
+
+**Velocidad:** en Voz, KAI empieza a hablar con la primera frase mientras escribe el resto; los modelos de
+voz se precargan al abrir Voz o el chat; el reconocimiento de frases cortas usa búsqueda rápida. Opcional
+en Configuración: **Modo rápido** de Claude Opus 5.5 (hasta 2,5× más veloz, cuesta el doble por token).
 - Cada acción tiene un nivel configurable (permitir / preguntar / bloquear). Las que modifican algo
   piden confirmación por defecto: aparecen en el chat con **Autorizar / Rechazar** y una vista previa, y
   los permisos se vuelven a verificar al ejecutar. Papelera y scripts siempre preguntan.

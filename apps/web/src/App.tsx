@@ -91,7 +91,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <UpdateButton version="0.9.1" />
+        <UpdateButton version="0.9.2" />
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">

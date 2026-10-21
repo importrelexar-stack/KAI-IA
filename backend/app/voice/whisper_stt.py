@@ -133,6 +133,10 @@ class WhisperSTT(SpeechToText):
             self._model = WhisperModel(str(self.model_dir), device="cpu", compute_type="int8")
         return self._model
 
+    def warm(self) -> None:
+        with self._lock:
+            self._load()
+
     def transcribe(self, audio: bytes, language: str) -> Transcript:
         with self._lock:
             model = self._load()
@@ -143,8 +147,10 @@ class WhisperSTT(SpeechToText):
                 code = language_code(language)
                 # La interfaz ya entrega sólo la frase hablada: el VAD de Whisper puede recortar el
                 # comienzo, así que se usa sólo en audios largos (archivos importados).
+                # Frases cortas (lo habitual al hablarle a KAI): búsqueda codiciosa, 2-3 veces más rápida.
+                short = len(pcm) <= 20 * SAMPLE_RATE
                 segments, info = model.transcribe(
-                    pcm, language=code, beam_size=5, condition_on_previous_text=False,
+                    pcm, language=code, beam_size=1 if short else 5, condition_on_previous_text=False,
                     vad_filter=len(pcm) > 30 * SAMPLE_RATE,
                     initial_prompt=INITIAL_PROMPTS.get(code),
                 )

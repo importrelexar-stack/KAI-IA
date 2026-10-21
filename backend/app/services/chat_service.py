@@ -18,6 +18,7 @@ from app.core.persona import build_system_prompt
 from app.core.state import AssistantState
 from app.agents.tools import TOOLS, ToolContext, run_tool
 from app.integrations import mcp_tools
+from app.services.quick_actions import try_open_app
 from app.memory.store import MemoryStore
 from app.models.entities import Attachment, Conversation, Memory, Message, utcnow
 from app.providers.base import ChatTurn, Completed, GenerationOptions, TextDelta, ToolActivity, ToolCall, ToolResult
@@ -169,12 +170,27 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
         yield {"type": "meta", "conversation_id": conv.id, "user_message": _out(user_msg),
                "title": conv.title, "provider": provider.name}
 
+        # Órdenes simples («abrí Excel»): se resuelven al instante, sin esperar al modelo.
+        quick = try_open_app(db, message) if prefs.agents_enabled and not attached else None
+        if quick is not None:
+            audit(db, "agent.tool", target=quick.tool, details={"ok": quick.ok, "summary": quick.summary[:200],
+                                                               "quick": True}, client=client)
+            item = {"name": quick.tool, "summary": quick.summary, "ok": quick.ok}
+            yield {"type": "tool", **item}
+            yield {"type": "delta", "text": quick.reply}
+            assistant = _save_assistant(db, conv, quick.reply, "kai-local", "end_turn", None, [item])
+            yield {"type": "done", "conversation_id": conv.id, "assistant_message": _out(assistant),
+                   "served_by_fallback": False, "usage": {"input_tokens": 0, "output_tokens": 0,
+                                                          "cache_read_tokens": 0}}
+            return
+
         ctx.state.begin(AssistantState.PROCESSING, "Pensando la respuesta")
         state_started = True
         options = GenerationOptions(model=prefs.model, max_tokens=prefs.max_tokens, effort=prefs.effort,
                                     use_fallbacks=prefs.use_fallbacks, max_tool_iterations=prefs.max_tool_iterations,
                                     web_search=prefs.agents_enabled and prefs.web_search_enabled,
-                                    web_fetch=prefs.agents_enabled and prefs.web_fetch_enabled)
+                                    web_fetch=prefs.agents_enabled and prefs.web_fetch_enabled,
+                                    fast=prefs.fast_mode)
         tool_ctx = ToolContext(db=db, memory=memory, conversation_id=conv.id,
                                auto_approve_memory=prefs.memory_auto_approve, publish=ctx.bus.publish,
                                protected=[ctx.settings.data_dir])

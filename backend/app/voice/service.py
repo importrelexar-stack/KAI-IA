@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from pathlib import Path
 from typing import Any, Literal
 
@@ -45,6 +46,28 @@ class VoiceService:
         if self._tts is None or self._tts_key != voice:
             self._tts, self._tts_key = self.make_tts(voice), voice
         return self._tts
+
+    def warm(self, model_size: str, voice: str) -> None:
+        """Carga en memoria los modelos ya descargados (en segundo plano), para que la primera frase
+        no espere la carga. Se llama al abrir Voz o el chat; cada motor se carga una sola vez."""
+        for eng in (self.stt(model_size), self.tts(voice)):
+            loader = getattr(eng, "warm", None)
+            if loader is None or getattr(eng, "_warming", False):
+                continue
+            try:
+                st = eng.status()
+            except Exception:  # noqa: BLE001
+                continue
+            if st.installed and st.model_ready:
+                eng._warming = True  # type: ignore[attr-defined]
+                threading.Thread(target=self._safe_warm, args=(loader,), daemon=True, name="kai-voice-warm").start()
+
+    @staticmethod
+    def _safe_warm(loader: Any) -> None:
+        try:
+            loader()
+        except Exception:  # noqa: BLE001
+            log.warning("No se pudo precargar un modelo de voz", exc_info=True)
 
     def engine(self, kind: Kind, model_size: str, voice: str) -> SpeechToText | TextToSpeech:
         return self.stt(model_size) if kind == "stt" else self.tts(voice)

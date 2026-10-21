@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import unicodedata
 from dataclasses import dataclass
@@ -80,12 +81,25 @@ def _from_shortcuts() -> list[InstalledApp]:
 class AppCatalog:
     def __init__(self) -> None:
         self._cache: tuple[float, list[InstalledApp]] | None = None
+        self._refreshing = threading.Lock()
 
     def apps(self) -> list[InstalledApp]:
+        """Lista en caché; si venció, se devuelve la anterior y se actualiza en segundo plano (sin demoras)."""
         if sys.platform != "win32":
             return []
-        if self._cache and time.monotonic() - self._cache[0] < CACHE_SECONDS:
+        if self._cache:
+            if time.monotonic() - self._cache[0] >= CACHE_SECONDS and self._refreshing.acquire(blocking=False):
+                threading.Thread(target=self._refresh_bg, daemon=True, name="kai-apps").start()
             return self._cache[1]
+        return self.refresh()
+
+    def _refresh_bg(self) -> None:
+        try:
+            self.refresh()
+        finally:
+            self._refreshing.release()
+
+    def refresh(self) -> list[InstalledApp]:
         try:
             found = _from_start_apps()
         except Exception:  # noqa: BLE001
@@ -97,8 +111,9 @@ class AppCatalog:
         self._cache = (time.monotonic(), result)
         return result
 
-    def find(self, query: str) -> InstalledApp:
-        """La aplicación que mejor coincide con lo que pidió la persona (o un error con opciones)."""
+    def find(self, query: str, min_score: int = 1) -> InstalledApp:
+        """La aplicación que mejor coincide con lo que pidió la persona (o un error con opciones).
+        `min_score` sube la exigencia (60 = el nombre contiene todas las palabras pedidas)."""
         apps = self.apps()
         if not apps:
             raise KaiError("No pude leer las aplicaciones instaladas (sólo funciona en Windows).",
@@ -132,6 +147,9 @@ class AppCatalog:
                            status_code=404)
         scored.sort(key=lambda x: (-x[0], len(x[1].name)))
         top_score = scored[0][0]
+        if top_score < min_score:
+            raise KaiError(f"No encontré una aplicación instalada que se llame «{query}».", code="app_not_found",
+                           status_code=404)
         tied = [a for s, a in scored if s == top_score]
         if top_score < 95 and len(tied) > 1:
             names = ", ".join(f"«{a.name}»" for a in tied[:6])
