@@ -36,6 +36,9 @@ REPO = "importrelexar-stack/KAI-IA"
 RELEASE_PREFIX = f"https://github.com/{REPO}/releases/download/"
 MANIFEST_URL = os.environ.get("KAI_UPDATE_MANIFEST", f"{RELEASE_PREFIX}kai-ai-windows/latest.json")
 CACHE_SECONDS = 600
+AUTO_INTERVAL = 3600       # cada cuánto busca versiones nuevas sola (con «actualizar automáticamente»)
+AUTO_FIRST_DELAY = 90      # primera búsqueda, poco después de abrir KAI
+IDLE_SECONDS = 180         # instala recién cuando nadie la usó en estos segundos (sin cortar una charla)
 UPDATE_EXIT_CODE = 75  # la app de escritorio lo reconoce y muestra «Actualizando…» en lugar de un error
 
 
@@ -67,6 +70,7 @@ class Updater:
         self.state: dict[str, Any] = {"phase": "idle"}
         self._task: asyncio.Task[None] | None = None
         self.after_launch: Any = None  # lo fija main.run(): cierre ordenado de KAI Core
+        self._install_now = False
 
     @property
     def can_install(self) -> bool:
@@ -104,16 +108,22 @@ class Updater:
             raise KaiError("La actualización automática es para la app de escritorio. Si instalaste desde el código, "
                            "ejecutá actualizar.bat.", code="update_not_supported", status_code=409)
         if self._task and not self._task.done():
+            if self.state.get("phase") == "ready":
+                self._install_now = True  # ya bajada por la actualización automática: se instala ya
+                return
             raise KaiError("Ya se está descargando la actualización.", code="busy", status_code=409)
         self._task = asyncio.create_task(self._install())
 
-    async def _install(self) -> None:
+    async def _install(self, wait_idle: Any = None) -> None:
         try:
             latest = await self.manifest(force=True)
             url, expected = str(latest.get("url", "")), str(latest.get("sha256", "")).lower()
             if not url.startswith(RELEASE_PREFIX) or len(expected) != 64:
                 raise KaiError("La actualización publicada no es válida.", code="update_invalid")
             target = await self.download(url, expected)
+            if wait_idle is not None:
+                self.state = {"phase": "ready", "version": latest.get("version")}
+                await wait_idle()
             self.state = {"phase": "launching"}
             launch_installer(target)
             self.state = {"phase": "launched", "version": latest.get("version")}
@@ -125,6 +135,42 @@ class Updater:
         except Exception as e:  # noqa: BLE001
             log.exception("Actualización")
             self.state = {"phase": "error", "error": f"{type(e).__name__}: {e}"[:300]}
+
+    # ---------- Actualización automática ----------
+
+    async def auto_loop(self, enabled: Any, is_idle: Any) -> None:
+        """Busca versiones nuevas cada hora; si hay, la descarga y la instala cuando KAI está sin uso.
+        `enabled()` lee la preferencia; `is_idle()` dice si nadie está usando KAI en este momento."""
+        if not self.can_install:
+            return
+        await asyncio.sleep(AUTO_FIRST_DELAY)
+        while True:
+            try:
+                await self.auto_once(enabled, is_idle)
+            except Exception:  # noqa: BLE001
+                log.warning("Búsqueda automática de actualizaciones", exc_info=True)
+            await asyncio.sleep(AUTO_INTERVAL)
+
+    async def auto_once(self, enabled: Any, is_idle: Any) -> bool:
+        if not self.can_install or not enabled():
+            return False
+        if self._task and not self._task.done():
+            return False
+        try:
+            info = await self.check(force=True)
+        except KaiError:
+            return False  # sin Internet: se reintenta en la próxima vuelta
+        if not info["available"]:
+            return False
+        log.info("Actualización automática: hay una versión nueva (%s)", info["latest"].get("version"))
+
+        async def wait_idle() -> None:
+            while not is_idle() and not self._install_now:
+                await asyncio.sleep(5 if self._install_now else 30)
+
+        self._task = asyncio.create_task(self._install(wait_idle))
+        await self._task
+        return True
 
     async def download(self, url: str, expected_sha256: str, dest_dir: Path | None = None) -> Path:
         dest_dir = dest_dir or Path(tempfile.gettempdir()) / "KAI-update"

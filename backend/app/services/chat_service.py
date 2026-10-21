@@ -115,6 +115,7 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
                       client: str | None = None, title: str | None = None) -> AsyncIterator[dict[str, Any]]:
     """Genera eventos: meta → delta* → done | error."""
     db = ctx.db.SessionLocal()
+    ctx.touch()
     state_started = False
     try:
         prefs = get_preferences(db)
@@ -269,6 +270,7 @@ async def stream_chat(ctx: AppContext, message: str, conversation_id: str | None
         yield {"type": "error", "code": "internal_error", "message": "Error interno de KAI. Revisá data/logs/kai.log.",
                "status": 500}
     finally:
+        ctx.touch()
         if state_started:
             ctx.state.end()
         db.close()

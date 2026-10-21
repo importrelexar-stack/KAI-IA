@@ -3,7 +3,7 @@
   "info": {
     "title": "KAI Core API",
     "description": "API local de KAI AI. Escucha sólo en 127.0.0.1 por defecto.",
-    "version": "0.9.4"
+    "version": "0.9.5"
   },
   "paths": {
     "/api/v1/health": {
@@ -4632,6 +4632,11 @@
             "type": "boolean",
             "title": "Fast Mode",
             "default": false
+          },
+          "auto_update": {
+            "type": "boolean",
+            "title": "Auto Update",
+            "default": true
           }
         },
         "type": "object",
@@ -4916,6 +4921,17 @@
               }
             ],
             "title": "Fast Mode"
+          },
+          "auto_update": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Update"
           }
         },
         "type": "object",

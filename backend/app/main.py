@@ -92,6 +92,18 @@ def create_app(settings: Settings | None = None, *, provider_factory: ProviderFa
         from app.automation.apps_catalog import catalog
 
         warm = asyncio.create_task(asyncio.to_thread(catalog.apps), name="kai-apps-warm")
+        # Actualización automática (app de escritorio): se baja sola y se instala cuando KAI está sin uso.
+        from app.core.updates import IDLE_SECONDS
+        from app.services.settings_service import get_preferences
+
+        def auto_update_on() -> bool:
+            with ctx.db.SessionLocal() as s:
+                return get_preferences(s).auto_update
+
+        auto = asyncio.create_task(ctx.updater.auto_loop(auto_update_on, lambda: ctx.idle_for(IDLE_SECONDS)),
+                                   name="kai-auto-update")
+        ctx.background_tasks.add(auto)
+        auto.add_done_callback(ctx.background_tasks.discard)
         ctx.background_tasks.add(warm)
         warm.add_done_callback(ctx.background_tasks.discard)
         yield

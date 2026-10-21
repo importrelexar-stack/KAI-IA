@@ -36,6 +36,7 @@ class AppContext:
     started_at: float = field(default_factory=time.time)
     mcp: Any = None  # McpManager (Fase 6)
     updater: Any = None  # Updater (actualizaciones de la app de escritorio)
+    last_activity: float = float("-inf")  # time.monotonic() del último uso (chat o voz): para actualizar sin interrumpir
     background_tasks: set[Any] = field(default_factory=set)
     _provider: AIProvider | None = None
     _memory: MemoryStore | None = None
@@ -45,6 +46,13 @@ class AppContext:
         if self._memory is None:
             self._memory = MemoryStore(self.db.features.get("fts5", False))
         return self._memory
+
+    def touch(self) -> None:
+        self.last_activity = time.monotonic()
+
+    def idle_for(self, seconds: float) -> bool:
+        busy = self.state.snapshot().get("active_operations", 0) > 0
+        return not busy and time.monotonic() - self.last_activity >= seconds
 
     @property
     def demo_mode(self) -> bool:

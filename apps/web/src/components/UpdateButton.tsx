@@ -9,9 +9,9 @@ interface UpdateInfo {
   can_install: boolean;
   state: UpdateState;
 }
-interface UpdateState { phase: "idle" | "downloading" | "launching" | "launched" | "error"; progress?: number; error?: string }
+interface UpdateState { phase: "idle" | "downloading" | "ready" | "launching" | "launched" | "error"; progress?: number; error?: string; version?: string }
 
-const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
+const CHECK_EVERY_MS = 60 * 60 * 1000;
 
 /** Pie del menú: versión, «Buscar actualizaciones» y, si hay una nueva, «Actualizar» (descarga, verifica e instala). */
 export function UpdateButton({ version }: { version: string }) {
@@ -42,7 +42,7 @@ export function UpdateButton({ version }: { version: string }) {
   }, []);
 
   useEffect(() => {
-    if (state.phase !== "downloading" && state.phase !== "launching") return;
+    if (state.phase !== "downloading" && state.phase !== "launching" && state.phase !== "ready") return;
     const t = setInterval(async () => {
       try { setState(await get<UpdateState>("/system/update/state")); } catch { /* KAI se está cerrando para actualizar */ }
     }, 1000);
@@ -55,7 +55,7 @@ export function UpdateButton({ version }: { version: string }) {
       setMsg("Instalaste KAI desde el código: cerrá KAI y ejecutá «actualizar.bat» en la carpeta de KAI.");
       return;
     }
-    if (!confirm(`¿Actualizar KAI a la versión ${info.latest.version}?\n\nSe descarga el instalador oficial, se verifica y se abre. `
+    if (phase !== "ready" && !confirm(`¿Actualizar KAI a la versión ${info.latest.version}?\n\nSe descarga el instalador oficial, se verifica y se abre. `
       + "KAI se cierra unos segundos y vuelve a abrirse. Tus conversaciones y ajustes se conservan.")) return;
     setMsg(null);
     try { setState(await post<UpdateState>("/system/update/install")); } catch (e) { setMsg((e as Error).message); }
@@ -69,9 +69,11 @@ export function UpdateButton({ version }: { version: string }) {
           disabled={phase === "downloading" || phase === "launching"} title={info.latest.notes}>
           {phase === "downloading" || phase === "launching" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {phase === "downloading" ? `Descargando ${Math.round((state.progress ?? 0) * 100)}%`
-            : phase === "launching" ? "Abriendo instalador…" : `Actualizar a v${info.latest.version}`}
+            : phase === "launching" ? "Abriendo instalador…"
+            : phase === "ready" ? `Instalar v${info.latest.version} ahora` : `Actualizar a v${info.latest.version}`}
         </button>
       )}
+      {phase === "ready" && <p>Lista para instalar: se instala sola cuando no estés usando KAI.</p>}
       {phase === "launched" && <p className="text-cyan">Se abrió el instalador. KAI se va a reiniciar solo.</p>}
       {phase === "error" && <p className="text-danger">{state.error}</p>}
       {msg && <p>{msg}</p>}

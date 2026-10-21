@@ -17,7 +17,7 @@ intercambiables.
 **[⬇ Descargar Instalar-KAI-AI.exe](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-windows/Instalar-KAI-AI.exe)** → doble clic → «Siguiente». No pide permisos de
 administrador ni necesita Python o Node.js, y crea el acceso «KAI AI» en el escritorio. Si SmartScreen avisa
 que no está firmado: «Más información» → «Ejecutar de todos modos». Ver [apps/desktop/README.md](apps/desktop/README.md).
-Las versiones siguientes se instalan desde la propia app con el botón **Actualizar** (abajo a la izquierda).
+Después KAI **se actualiza sola**: baja cada versión nueva y la instala cuando no la estás usando (se puede desactivar en Configuración).
 
 Android (beta): **[⬇ KAI-AI.apk](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-android/KAI-AI.apk)** (abrilo desde el teléfono).
 

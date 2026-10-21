@@ -35,6 +35,8 @@ class Preferences(BaseModel):
     max_tool_iterations: int = Field(default=6, ge=1, le=15)
     # Modo rápido de Claude (Opus 5.5): respuestas más veloces, cuesta el doble por token.
     fast_mode: bool = False
+    # App de escritorio: buscar, bajar e instalar versiones nuevas sola (cuando no se está usando).
+    auto_update: bool = True
 
     @field_validator("model")
     @classmethod
@@ -67,6 +69,7 @@ class PreferencesUpdate(BaseModel):
     web_fetch_enabled: bool | None = None
     max_tool_iterations: int | None = Field(default=None, ge=1, le=15)
     fast_mode: bool | None = None
+    auto_update: bool | None = None
 
     @field_validator("model")
     @classmethod

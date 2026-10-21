@@ -105,6 +105,16 @@ export function SettingsPage() {
               </span>
             </span>
           </label>
+          <label className="flex items-start gap-2 text-sm md:col-span-2">
+            <input type="checkbox" className="mt-1" checked={prefs.auto_update} onChange={(e) => setPrefs({ ...prefs, auto_update: e.target.checked })} />
+            <span>
+              Actualizar KAI automáticamente (app de escritorio)
+              <span className="block text-xs text-muted">
+                Cada hora busca si hay una versión nueva; la baja, verifica que sea la oficial y la instala cuando no estés
+                usando KAI (unos segundos de reinicio). Tus datos se conservan.
+              </span>
+            </span>
+          </label>
           <label className="mt-6 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={prefs.use_fallbacks} onChange={(e) => setPrefs({ ...prefs, use_fallbacks: e.target.checked })} />
             Reintento automático con otro modelo si Claude rechaza por seguridad

@@ -101,6 +101,7 @@ async def download_model(kind: Literal["stt", "tts"], request: Request, voice: V
 @router.post("/transcribe", response_model=TranscriptOut, summary="Voz a texto (motor local)")
 async def transcribe(request: Request, ctx: Ctx, voice: Voice, db: Db, audio: UploadFile = File(...),
                      language: str | None = Form(default=None)) -> TranscriptOut:
+    ctx.touch()
     _check_rate(request)
     data = await audio.read(MAX_AUDIO_BYTES + 1)
     if not data:
@@ -119,6 +120,7 @@ async def transcribe(request: Request, ctx: Ctx, voice: Voice, db: Db, audio: Up
 @router.post("/synthesize", summary="Texto a voz (WAV, motor local)",
              responses={200: {"content": {"audio/wav": {}}}})
 async def synthesize(body: SynthesizeIn, request: Request, ctx: Ctx, voice: Voice, db: Db) -> Response:
+    ctx.touch()
     _check_rate(request)
     text = clean_for_speech(body.text)
     if not text:

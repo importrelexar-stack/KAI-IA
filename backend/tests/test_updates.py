@@ -130,3 +130,42 @@ def test_installer_helper_gets_clean_env(monkeypatch, tmp_path):
     updates.launch_installer(tmp_path / "Instalar-KAI-AI.exe")
     env = calls[-1]["env"]
     assert "_PYI_APPLICATION_HOME_DIR" not in env and env["PYINSTALLER_RESET_ENVIRONMENT"] == "1"
+
+
+def test_auto_update_downloads_waits_idle_and_installs(monkeypatch, tmp_path):
+    launched = []
+    monkeypatch.setattr(updates, "launch_installer", launched.append)
+    monkeypatch.setattr(updates.Updater, "can_install", property(lambda self: True))
+    monkeypatch.setattr(updates.tempfile, "gettempdir", lambda: str(tmp_path))
+    real_sleep = asyncio.sleep
+    monkeypatch.setattr(updates.asyncio, "sleep", lambda s: real_sleep(0))
+    u = updates.Updater(_transport(_manifest()))
+    idle_checks = iter([False, False, True])  # KAI en uso dos veces; después, libre
+
+    async def run():
+        return await u.auto_once(lambda: True, lambda: next(idle_checks))
+    assert asyncio.run(run()) is True
+    assert launched and u.state["phase"] == "launched"
+
+
+def test_auto_update_respects_preference_and_no_news(monkeypatch, tmp_path):
+    launched = []
+    monkeypatch.setattr(updates, "launch_installer", launched.append)
+    monkeypatch.setattr(updates.Updater, "can_install", property(lambda self: True))
+    off = updates.Updater(_transport(_manifest()))
+    assert asyncio.run(off.auto_once(lambda: False, lambda: True)) is False
+    monkeypatch.setattr(updates, "current_build", lambda: (500, "abc"))  # ya tiene la última
+    same = updates.Updater(_transport(_manifest()))
+    assert asyncio.run(same.auto_once(lambda: True, lambda: True)) is False
+    offline = updates.Updater(httpx.MockTransport(lambda r: httpx.Response(503)))
+    assert asyncio.run(offline.auto_once(lambda: True, lambda: True)) is False
+    assert not launched
+
+
+def test_auto_update_preference_and_idle(client):
+    assert client.get("/api/v1/settings").json()["preferences"]["auto_update"] is True
+    ctx = client.app.state.ctx
+    ctx.last_activity = float("-inf")
+    assert ctx.idle_for(180)
+    client.post("/api/v1/chat", json={"message": "hola", "stream": False})
+    assert not ctx.idle_for(180)  # recién se usó: no se interrumpe con una actualización

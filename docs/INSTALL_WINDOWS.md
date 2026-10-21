@@ -12,8 +12,10 @@
    reconocimiento local, ~465 MB, una sola vez). En la app de escritorio el reconocimiento «del navegador»
    no está disponible (el componente WebView2 de Windows no trae ese servicio), por eso se usa el local.
 
-**Actualizar:** no hace falta volver a descargar el instalador. Cuando hay una versión nueva, abajo a la
-izquierda aparece **Actualizar a vX.Y.Z**: KAI descarga el instalador oficial, verifica su SHA-256, se
+**Actualizar:** es automático. Cada hora KAI busca si hay una versión nueva, la descarga, verifica su SHA-256
+y la instala cuando no la estás usando (se reinicia sola en unos segundos). Se puede desactivar en
+Configuración → «Actualizar KAI automáticamente». También podés forzarlo: abajo a la izquierda aparece
+**Actualizar a vX.Y.Z**: KAI descarga el instalador oficial, verifica su SHA-256, se
 cierra, se actualiza y se vuelve a abrir solo (tus datos se conservan). El ícono ↻ al lado de la versión
 busca actualizaciones en el momento.
 
