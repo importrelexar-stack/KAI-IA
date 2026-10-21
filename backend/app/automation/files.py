@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.errors import KaiError
+from app.core.procenv import child_env
 
 MAX_LIST = 300
 MAX_SEARCH_RESULTS = 100
@@ -228,12 +229,12 @@ def open_path(target: str) -> str:
     elif sys.platform == "darwin":
         subprocess.Popen(["open", target])  # noqa: S603, S607
     else:
-        subprocess.Popen(["xdg-open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # noqa: S603, S607
+        subprocess.Popen(["xdg-open", target], env=child_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # noqa: S603, S607
     return f"Abierto: {target}"
 
 
 def launch_app(executable: str) -> str:
-    subprocess.Popen([executable], close_fds=True)  # noqa: S603 - sólo programas registrados por el usuario
+    subprocess.Popen([executable], close_fds=True, env=child_env())  # noqa: S603 - sólo programas registrados por el usuario
     return f"Aplicación iniciada: {Path(executable).name}"
 
 
@@ -248,7 +249,7 @@ def run_script(path: Path, timeout: int) -> tuple[bool, str]:
     else:
         raise KaiError("Tipo de script no soportado.", code="unsupported", status_code=422)
     try:
-        proc = subprocess.run(cmd, capture_output=True, timeout=timeout, cwd=str(path.parent),  # noqa: S603
+        proc = subprocess.run(cmd, capture_output=True, timeout=timeout, cwd=str(path.parent), env=child_env(),  # noqa: S603
                               text=True, encoding="utf-8", errors="replace")
     except subprocess.TimeoutExpired:
         return False, f"El script superó el tiempo máximo ({timeout} s) y se detuvo."

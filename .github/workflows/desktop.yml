@@ -87,7 +87,13 @@ jobs:
           $env:LOCALAPPDATA = "$env:RUNNER_TEMP\kai-app"
           $env:KAI_DEMO_MODE = 'true'
           $exe = Get-ChildItem apps\desktop\src-tauri\target\release\kai-desktop.exe
+          # Como si la abriera el ayudante de actualización: entorno heredado de un KAI Core que ya se cerró
+          # (antes provocaba «Failed to load Python DLL ... _MEI...\python312.dll»).
+          $env:_PYI_APPLICATION_HOME_DIR = "$env:RUNNER_TEMP\_MEI000000gone"
+          $env:_PYI_ARCHIVE_FILE = Join-Path $exe.DirectoryName 'kai-core.exe'
+          $env:_PYI_PARENT_PROCESS_LEVEL = '1'
           $app = Start-Process $exe.FullName -PassThru
+          Remove-Item Env:_PYI_APPLICATION_HOME_DIR, Env:_PYI_ARCHIVE_FILE, Env:_PYI_PARENT_PROCESS_LEVEL
           $ok = $false
           for ($i = 0; $i -lt 180; $i++) {
             Start-Sleep -Milliseconds 500
@@ -148,14 +154,20 @@ jobs:
                     open("latest.json", "w"), indent=2)
           PY
           cat latest.json
-          gh release delete kai-ai-windows --yes --cleanup-tag || true
-          gh release delete desktop-latest --yes --cleanup-tag || true
-          gh release create kai-ai-windows Instalar-KAI-AI.exe latest.json --target "$GITHUB_SHA" --latest \
-            --title "KAI AI para Windows — instalador" \
-            --notes "Descargá **Instalar-KAI-AI.exe**, hacé doble clic y seguí el asistente (no pide permisos de administrador). Crea el acceso «KAI AI» en el escritorio y en el menú Inicio.
+          NOTES="Descargá **Instalar-KAI-AI.exe**, hacé doble clic y seguí el asistente (no pide permisos de administrador). Crea el acceso «KAI AI» en el escritorio y en el menú Inicio.
 
           Para las próximas versiones no hace falta volver a descargarlo: en KAI, abajo a la izquierda, tocá «Actualizar».
 
           Si Windows SmartScreen avisa que el archivo no está firmado: «Más información» → «Ejecutar de todos modos».
 
-          Generado automáticamente desde ${GITHUB_SHA::7} (${GITHUB_REF_NAME})."
+          KAI AI $VERSION · generado automáticamente desde ${GITHUB_SHA::7} (${GITHUB_REF_NAME})."
+          # Nunca se borra la descarga existente: se reemplazan sus archivos (si algo falla, queda la anterior).
+          if gh release view kai-ai-windows >/dev/null 2>&1; then
+            gh release upload kai-ai-windows Instalar-KAI-AI.exe --clobber
+            gh release upload kai-ai-windows latest.json --clobber
+            gh release edit kai-ai-windows --latest --title "KAI AI para Windows — instalador" --notes "$NOTES"
+          else
+            gh release create kai-ai-windows Instalar-KAI-AI.exe latest.json --target "$GITHUB_SHA" --latest \
+              --title "KAI AI para Windows — instalador" --notes "$NOTES"
+          fi
+          gh release delete desktop-latest --yes --cleanup-tag || true

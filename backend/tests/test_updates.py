@@ -109,3 +109,24 @@ def test_after_launch_shuts_down(monkeypatch, tmp_path):
     u.after_launch = lambda: calls.append(True)
     asyncio.run(u._install())
     assert calls == [True]
+
+
+def test_child_env_drops_pyinstaller_state(monkeypatch):
+    from app.core.procenv import child_env
+
+    monkeypatch.setenv("_PYI_APPLICATION_HOME_DIR", r"C:\Users\pc\AppData\Local\Temp\_MEI000095fc2")
+    monkeypatch.setenv("_PYI_ARCHIVE_FILE", r"C:\KAI\kai-core.exe")
+    monkeypatch.setenv("_MEIPASS2", r"C:\Temp\_MEI1")
+    monkeypatch.setenv("KAI_ALGO", "sigue")
+    env = child_env()
+    assert not any(k.startswith(("_PYI_", "_MEIPASS")) for k in env)
+    assert env["PYINSTALLER_RESET_ENVIRONMENT"] == "1" and env["KAI_ALGO"] == "sigue"
+
+
+def test_installer_helper_gets_clean_env(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setenv("_PYI_APPLICATION_HOME_DIR", "C:/Temp/_MEI1")
+    monkeypatch.setattr(updates.subprocess, "Popen", lambda cmd, **kw: calls.append(kw))
+    updates.launch_installer(tmp_path / "Instalar-KAI-AI.exe")
+    env = calls[-1]["env"]
+    assert "_PYI_APPLICATION_HOME_DIR" not in env and env["PYINSTALLER_RESET_ENVIRONMENT"] == "1"

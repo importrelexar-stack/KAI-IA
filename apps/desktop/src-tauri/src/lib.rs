@@ -95,6 +95,10 @@ fn start_sidecar(app: &AppHandle) -> Result<(), String> {
         .env("KAI_SHUTDOWN_TOKEN", state.shutdown_token.clone())
         // Si la app se cierra de golpe, KAI Core lo detecta y se detiene (no queda huérfano).
         .env("KAI_PARENT_PID", std::process::id().to_string())
+        // KAI Core está empaquetado con PyInstaller: si esta app se abrió desde otro proceso de PyInstaller
+        // (p. ej. el ayudante de actualización), heredó variables _PYI_* que apuntan a una carpeta temporal
+        // ya borrada («Failed to load Python DLL»). Así KAI Core siempre arranca de cero.
+        .env("PYINSTALLER_RESET_ENVIRONMENT", "1")
         .env("PYTHONUTF8", "1");
     let (mut rx, child) = cmd.spawn().map_err(|e| e.to_string())?;
     *state.child.lock().unwrap() = Some(child);

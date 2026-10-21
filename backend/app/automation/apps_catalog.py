@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.core.errors import KaiError
+from app.core.procenv import child_env
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def _from_start_apps() -> list[InstalledApp]:
     script = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
               "Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress")
     proc = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],  # noqa: S603, S607
-                          capture_output=True, timeout=20, encoding="utf-8", errors="replace",
+                          capture_output=True, timeout=20, encoding="utf-8", errors="replace", env=child_env(),
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if proc.returncode != 0 or not proc.stdout.strip():
         return []
@@ -163,7 +164,7 @@ def launch(app: InstalledApp) -> str:
     if sys.platform != "win32":
         raise KaiError("Abrir aplicaciones instaladas sólo funciona en Windows.", code="unsupported", status_code=409)
     if app.app_id:
-        subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{app.app_id}"], close_fds=True)  # noqa: S603, S607
+        subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{app.app_id}"], close_fds=True, env=child_env())  # noqa: S603, S607
     else:
         os.startfile(app.shortcut)  # type: ignore[attr-defined]  # noqa: S606
     return f"Abrí «{app.name}»."

@@ -28,6 +28,7 @@ import httpx
 from app import __version__
 from app.core.config import FROZEN
 from app.core.errors import KaiError
+from app.core.procenv import child_env
 
 log = logging.getLogger(__name__)
 
@@ -179,8 +180,8 @@ def launch_installer(path: Path) -> None:
         base = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW  # type: ignore[attr-defined]
         try:  # fuera del grupo de procesos de la app, para que no se cierre junto con ella
             subprocess.Popen(cmd, creationflags=base | subprocess.CREATE_BREAKAWAY_FROM_JOB,  # type: ignore[attr-defined]
-                             close_fds=True)  # noqa: S603 - ruta propia, verificada
+                             close_fds=True, env=child_env())  # noqa: S603 - ruta propia, verificada
             return
         except OSError:
             pass
-    subprocess.Popen(cmd, creationflags=base, close_fds=True)  # noqa: S603
+    subprocess.Popen(cmd, creationflags=base, close_fds=True, env=child_env())  # noqa: S603
