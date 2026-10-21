@@ -76,7 +76,10 @@ Vinculá el teléfono desde **Dispositivos** (QR de un solo uso, sólo por tu re
   Un explorador muestra exactamente lo que KAI puede ver.
 - KAI puede **listar, buscar (por nombre o contenido) y leer** archivos de texto, PDF y Word; **crear
   carpetas y archivos de texto, mover, ordenar carpetas** por tipo o fecha, **enviar a la papelera**,
-  **abrir** archivos y aplicaciones registradas y **ejecutar scripts registrados**.
+  **abrir** archivos y aplicaciones y **ejecutar scripts registrados**.
+- **Abrir aplicaciones por nombre** («abrí Excel», «abrí la calculadora»): cualquier aplicación del menú Inicio
+  de Windows (incluidas las de Microsoft Store), sin parámetros, igual que un clic. Se puede desactivar en
+  Archivos → «Aplicaciones que KAI puede abrir» o pasar a «Preguntar» en los permisos por acción.
 - Cada acción tiene un nivel configurable (permitir / preguntar / bloquear). Las que modifican algo
   piden confirmación por defecto: aparecen en el chat con **Autorizar / Rechazar** y una vista previa, y
   los permisos se vuelven a verificar al ejecutar. Papelera y scripts siempre preguntan.

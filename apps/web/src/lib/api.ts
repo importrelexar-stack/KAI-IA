@@ -379,6 +379,7 @@ export interface AutomationPermissions {
   folders: { path: string; mode: "read" | "read_write" }[];
   apps: { name: string; command: string; resolved?: string | null; available?: boolean }[];
   scripts: { name: string; path: string; timeout_seconds: number }[];
+  start_menu_apps: boolean;
   levels: Record<string, Level>;
   default_levels: Record<string, Level>;
   always_ask: string[];

@@ -3,7 +3,7 @@
   "info": {
     "title": "KAI Core API",
     "description": "API local de KAI AI. Escucha sólo en 127.0.0.1 por defecto.",
-    "version": "0.9.0"
+    "version": "0.9.1"
   },
   "paths": {
     "/api/v1/health": {
@@ -2237,6 +2237,51 @@
         }
       }
     },
+    "/api/v1/automation/installed-apps": {
+      "get": {
+        "tags": [
+          "automation"
+        ],
+        "summary": "Aplicaciones del menú Inicio que KAI puede abrir por nombre",
+        "operationId": "installed_apps_api_v1_automation_installed_apps_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Installed Apps Api V1 Automation Installed Apps Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/devices/remote": {
       "get": {
         "tags": [
@@ -4429,6 +4474,11 @@
             },
             "type": "object",
             "title": "Levels"
+          },
+          "start_menu_apps": {
+            "type": "boolean",
+            "title": "Start Menu Apps",
+            "default": true
           }
         },
         "type": "object",

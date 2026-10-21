@@ -288,6 +288,10 @@ def _automation_specs() -> tuple[ToolSpec, ...]:
         "enviar_a_papelera": ("files", "Envía un archivo o carpeta a la Papelera de reciclaje (siempre pide "
                                        "autorización; nunca borra definitivamente)."),
         "abrir": ("automation", "Abre un archivo o carpeta autorizada, o una aplicación registrada por el usuario."),
+        "abrir_aplicacion": ("automation", "Abre una aplicación instalada en Windows por su nombre (Excel, "
+                                           "Calculadora, Chrome…), como si la persona hiciera clic en el menú Inicio. "
+                                           "Usala sólo cuando la persona pida abrir una aplicación. No acepta "
+                                           "argumentos. Si hay varias que coinciden, preguntá cuál."),
         "ejecutar_script": ("automation", "Ejecuta un script registrado por el usuario (siempre pide autorización)."),
     }
     return tuple(ToolSpec(name, agent, desc, models[name], handler(name))

@@ -55,7 +55,7 @@ def list_agents(prefs: Preferences) -> list[dict]:
                   "Lista, busca, lee (texto, PDF, Word) y organiza archivos sólo dentro de las carpetas que autorizaste. "
                   "Lo que modifica algo pide confirmación según los permisos.", on, 4, _tools("files")),
         AgentInfo("automation", "KAI Automation",
-                  "Abre archivos y aplicaciones registradas y ejecuta scripts registrados, siempre con tu autorización.",
+                  "Abre aplicaciones de Windows por nombre (las del menú Inicio), archivos y scripts registrados según tus permisos.",
                   on, 4, _tools("automation")),
         AgentInfo("code", "KAI Code", "Ayuda a programar, analizar y modificar proyectos.", "planned", 6),
     )

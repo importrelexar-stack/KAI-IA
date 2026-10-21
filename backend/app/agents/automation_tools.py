@@ -16,6 +16,7 @@ from typing import Any, Literal
 from pydantic import Field
 from sqlalchemy.orm import Session
 
+from app.automation import apps_catalog
 from app.automation import files as fs
 from app.automation import tasks as task_engine
 from app.automation.permissions import PathGuard, Permissions, get_permissions, resolve_app
@@ -81,17 +82,33 @@ def input_models():  # type: ignore[no-untyped-def]
         destino: str = Field(min_length=1, max_length=500,
                              description="Ruta de un archivo/carpeta autorizada o nombre de una aplicación registrada")
 
+    class OpenAppIn(_In):
+        nombre: str = Field(min_length=1, max_length=100,
+                            description="Nombre de la aplicación como lo diría la persona: «Excel», «Calculadora», «Chrome»")
+
     class ScriptIn(_In):
         nombre: str = Field(min_length=1, max_length=60, description="Nombre de un script registrado por el usuario")
 
     return {
         "listar_carpeta": ListDirIn, "buscar_archivos": SearchFilesIn, "leer_archivo": ReadFileIn,
         "crear_carpeta": MakeDirIn, "escribir_archivo": WriteFileIn, "mover_archivo": MoveIn,
-        "organizar_carpeta": OrganizeIn, "enviar_a_papelera": TrashIn, "abrir": OpenIn, "ejecutar_script": ScriptIn,
+        "organizar_carpeta": OrganizeIn, "enviar_a_papelera": TrashIn, "abrir": OpenIn, "abrir_aplicacion": OpenAppIn,
+        "ejecutar_script": ScriptIn,
     }
 
 
 # ---------- Preparación (validación + vista previa) y ejecución ----------
+
+def _find_app(name: str, perms: Permissions) -> tuple[str, Any]:
+    """Primero las aplicaciones registradas por la persona; después, si lo permitió, las del menú Inicio."""
+    registered = next((a for a in perms.apps if a.name.lower() == name.strip().lower()), None)
+    if registered:
+        return "registered", registered
+    if not perms.start_menu_apps:
+        raise KaiError("Abrir aplicaciones del menú Inicio está desactivado. Se activa en Automatizaciones → "
+                       "«Aplicaciones que KAI puede abrir».", code="disabled", status_code=403)
+    return "start_menu", apps_catalog.catalog.find(name)
+
 
 def prepare(tool: str, args: dict[str, Any], perms: Permissions, protected: list[Path]) -> str:
     """Valida rutas y devuelve una vista previa legible. Lanza KaiError si no se puede."""
@@ -139,9 +156,13 @@ def prepare(tool: str, args: dict[str, Any], perms: Permissions, protected: list
             return f"Abrir la aplicación «{app.name}» ({resolve_app(app)})"
         p = g.resolve(target)
         if not p.exists():
-            raise KaiError(f"No existe «{p}» ni hay una aplicación registrada con ese nombre.", code="not_found",
+            raise KaiError(f"No existe «{p}» ni hay una aplicación registrada con ese nombre. Para abrir una "
+                           "aplicación instalada usá abrir_aplicacion.", code="not_found",
                            status_code=404)
         return f"Abrir {p}"
+    if tool == "abrir_aplicacion":
+        kind, app = _find_app(args["nombre"], perms)
+        return f"Abrir la aplicación «{app.name}»" + (f" ({resolve_app(app)})" if kind == "registered" else "")
     if tool == "ejecutar_script":
         script = next((s for s in perms.scripts if s.name.lower() == args["nombre"].strip().lower()), None)
         if script is None:
@@ -208,6 +229,11 @@ def execute(tool: str, args: dict[str, Any], perms: Permissions, protected: list
         if app:
             return True, fs.launch_app(resolve_app(app))
         return True, fs.open_path(str(g.resolve(target)))
+    if tool == "abrir_aplicacion":
+        kind, app = _find_app(args["nombre"], perms)
+        if kind == "registered":
+            return True, fs.launch_app(resolve_app(app))
+        return True, apps_catalog.launch(app)
     if tool == "ejecutar_script":
         script = next((s for s in perms.scripts if s.name.lower() == args["nombre"].strip().lower()), None)
         if script is None:

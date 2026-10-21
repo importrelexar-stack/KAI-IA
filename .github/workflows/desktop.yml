@@ -63,6 +63,9 @@ jobs:
           try { $upd = Invoke-RestMethod http://127.0.0.1:8799/api/v1/system/update } catch { $upd = $null }
           if ($upd -and $upd.current.build -ne [int]$env:GITHUB_RUN_NUMBER) { throw "el build empaquetado es $($upd.current.build)" }
           if ($upd -and -not $upd.can_install) { throw "la app empaquetada no permite actualizarse" }
+          $apps = Invoke-RestMethod http://127.0.0.1:8799/api/v1/automation/installed-apps
+          if (-not $apps.available -or $apps.total -lt 1) { throw "no se encontraron aplicaciones del menú Inicio" }
+          Write-Host "Aplicaciones del menú Inicio: $($apps.total) (p. ej. $(($apps.apps | Select-Object -First 5) -join ', '))"
           Write-Host "Sidecar OK (voz: $($voice.stt.name) / $($voice.tts.name))"
           taskkill /PID $p.Id /T /F | Out-Null
 

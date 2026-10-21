@@ -1,6 +1,6 @@
 [package]
 name = "kai-desktop"
-version = "0.9.0"
+version = "0.9.1"
 description = "KAI AI — app de escritorio"
 edition = "2021"
 publish = false

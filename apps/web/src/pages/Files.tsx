@@ -13,13 +13,15 @@ const TOOL_LABEL: Record<string, string> = {
   mover_archivo: "Mover o renombrar",
   organizar_carpeta: "Ordenar carpetas",
   enviar_a_papelera: "Enviar a la papelera",
-  abrir: "Abrir archivos y aplicaciones",
+  abrir: "Abrir archivos y aplicaciones registradas",
+  abrir_aplicacion: "Abrir aplicaciones del menú Inicio",
   ejecutar_script: "Ejecutar scripts registrados",
 };
 const LEVEL_LABEL: Record<Level, string> = { allow: "Permitir", ask: "Preguntar", deny: "Bloquear" };
 
 export function FilesPage() {
   const perms = useApi<AutomationPermissions>("/automation/permissions");
+  const installed = useApi<{ available: boolean; total: number }>("/automation/installed-apps");
   const [draft, setDraft] = useState<AutomationPermissions | null>(null);
   const [msg, setMsg] = useState<{ tone: "info" | "danger"; text: string } | null>(null);
   const [newFolder, setNewFolder] = useState({ path: "", mode: "read" as "read" | "read_write" });
@@ -33,7 +35,7 @@ export function FilesPage() {
     try {
       const saved = await put<AutomationPermissions>("/automation/permissions", {
         folders: next.folders, apps: next.apps.map(({ name, command }) => ({ name, command })),
-        scripts: next.scripts, levels: next.levels,
+        scripts: next.scripts, levels: next.levels, start_menu_apps: next.start_menu_apps,
       });
       perms.setData(saved);
       setDraft(saved);
@@ -53,7 +55,7 @@ export function FilesPage() {
       <Notice>
         Las carpetas del sistema, los datos de KAI y los archivos de credenciales (.env, claves, .ssh) quedan bloqueados siempre.
         Nada se borra definitivamente: lo eliminado va a la Papelera de reciclaje. KAI no puede ejecutar comandos libres: sólo
-        aplicaciones y scripts que registres.
+        abre aplicaciones (del menú Inicio o las que registres) y los scripts que registres.
       </Notice>
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
 
@@ -116,6 +118,18 @@ export function FilesPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Aplicaciones que KAI puede abrir">
+          <label className="mb-1 flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1" checked={draft.start_menu_apps}
+              onChange={(e) => void save({ ...draft, start_menu_apps: e.target.checked })} />
+            <span>
+              Permitir que KAI abra cualquier aplicación del menú Inicio cuando se lo pidas («abrí Excel»)
+              <span className="block text-xs text-muted">
+                Se abre igual que con un clic en el menú Inicio, sin parámetros. KAI no puede ejecutar comandos.
+                {installed.data?.available && ` ${installed.data.total} aplicaciones encontradas.`}
+              </span>
+            </span>
+          </label>
+          <p className="mb-3 text-xs text-muted">También podés registrar programas que no estén en el menú Inicio:</p>
           {draft.apps.length ? (
             <ul className="mb-3 divide-y divide-line text-sm">
               {draft.apps.map((a, i) => (

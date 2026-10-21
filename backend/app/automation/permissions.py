@@ -5,7 +5,8 @@ Principios:
 - Nada es accesible por defecto: el usuario autoriza cada carpeta.
 - Las carpetas del sistema, la carpeta de datos de KAI y los archivos sensibles se
   bloquean siempre, aunque estén dentro de una carpeta autorizada.
-- No existe ejecución arbitraria de comandos: sólo aplicaciones y scripts registrados.
+- No existe ejecución arbitraria de comandos: sólo aplicaciones y scripts registrados, y (si está
+  activado) las aplicaciones del menú Inicio, que se abren sin argumentos.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ DEFAULT_LEVELS: dict[str, Level] = {
     "organizar_carpeta": "ask",
     "enviar_a_papelera": "ask",
     "abrir": "ask",
+    "abrir_aplicacion": "allow",
     "ejecutar_script": "ask",
 }
 # Herramientas que nunca se ejecutan sin confirmación, aunque el usuario elija "allow".
@@ -70,6 +72,8 @@ class Permissions(BaseModel):
     apps: list[AppEntry] = Field(default_factory=list, max_length=50)
     scripts: list[ScriptEntry] = Field(default_factory=list, max_length=50)
     levels: dict[str, Level] = Field(default_factory=dict)
+    # Abrir por nombre cualquier aplicación del menú Inicio (sin argumentos), además de las registradas.
+    start_menu_apps: bool = True
 
     def level(self, tool: str) -> Level:
         lvl = self.levels.get(tool, DEFAULT_LEVELS.get(tool, "ask"))
@@ -204,7 +208,8 @@ def save_permissions(db: Session, perms: Permissions, protected: list[Path]) -> 
     names = [a.name.lower() for a in perms.apps] + [s.name.lower() for s in perms.scripts]
     if len(names) != len(set(names)):
         raise KaiError("Hay nombres repetidos entre aplicaciones o scripts.", code="duplicate_name", status_code=422)
-    clean = Permissions(folders=folders, apps=perms.apps, scripts=perms.scripts, levels=perms.levels)
+    clean = Permissions(folders=folders, apps=perms.apps, scripts=perms.scripts, levels=perms.levels,
+                        start_menu_apps=perms.start_menu_apps)
     row = db.get(SettingEntry, _KEY)
     if row is None:
         db.add(SettingEntry(key=_KEY, value=clean.model_dump()))
