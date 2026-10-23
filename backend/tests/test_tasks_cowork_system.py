@@ -99,10 +99,11 @@ def test_safe_filename():
 def test_system_status_and_agents(client):
     s = client.get("/api/v1/system/status").json()
     assert s["database"]["ok"] is True and s["provider"]["configured"] is True
-    assert s["features"]["voice"] == "planned"
+    assert s["features"]["voice"] == "available" and s["features"]["agents"] == "available"
     agents = client.get("/api/v1/agents").json()
-    assert {a["id"]: a["status"] for a in agents}["orchestrator"] == "active"
-    assert all(a["status"] == "planned" for a in agents if a["id"] != "orchestrator")
+    status = {a["id"]: a["status"] for a in agents}
+    assert status["orchestrator"] == status["memory"] == status["planner"] == "active"
+    assert status["research"] == "disabled" and status["code"] == "planned"
 
 
 def test_websocket_receives_state_and_task_events(client):
@@ -126,3 +127,13 @@ def test_openapi_and_root(client):
     spec = client.get("/openapi.json").json()
     assert "/api/v1/chat" in spec["paths"] and "/api/v1/cowork/prepare" in spec["paths"]
     assert "La interfaz no está compilada" in client.get("/").json()["message"]
+
+
+def test_shutdown_requires_token(client):
+    assert client.post("/api/v1/system/shutdown").status_code == 403  # sin token configurado
+    called = []
+    client.app.state.shutdown_token = "secreto-123"
+    client.app.state.request_shutdown = lambda: called.append(True)
+    assert client.post("/api/v1/system/shutdown", headers={"X-KAI-Shutdown": "otro"}).status_code == 403
+    r = client.post("/api/v1/system/shutdown", headers={"X-KAI-Shutdown": "secreto-123"})
+    assert r.status_code == 200 and called == [True]

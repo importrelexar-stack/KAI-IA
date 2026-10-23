@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Ventana principal: sólo los permisos básicos. La interfaz de KAI habla con KAI Core por HTTP, no por IPC.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

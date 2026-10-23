@@ -20,7 +20,7 @@ Start-Process $shell -ArgumentList @('-NoExit', '-Command', $backendCmd)
 if (Test-NodeOk) {
     if (-not (Test-Path (Join-Path $WebDir 'node_modules'))) {
         Write-Step "Instalando dependencias de la interfaz"
-        Push-Location $WebDir; npm install --no-fund --no-audit; Pop-Location
+        Push-Location $WebDir; Invoke-Native { npm install --no-fund --no-audit }; Pop-Location
     }
     Write-Step "Iniciando la interfaz (Vite) en http://127.0.0.1:5173"
     Start-Process $shell -ArgumentList @('-NoExit', '-Command', "Set-Location '$WebDir'; npm run dev")

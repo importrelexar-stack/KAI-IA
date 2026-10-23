@@ -31,3 +31,4 @@ apps/android/local.properties
 .DS_Store
 Thumbs.db
 .idea/
+backend/app/_build.py

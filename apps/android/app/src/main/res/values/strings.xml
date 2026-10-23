@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KAI</string>
+    <string name="channel_approvals">Autorizaciones</string>
+    <string name="channel_approvals_desc">Acciones de KAI que esperan tu aprobación</string>
+    <string name="channel_routines">Rutinas</string>
+    <string name="channel_routines_desc">Resultados de las rutinas programadas en KAI</string>
+</resources>

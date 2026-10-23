@@ -5,7 +5,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-gradient text-3xl font-semibold tracking-tight">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex gap-2">{actions}</div>}
@@ -16,7 +16,12 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 export function Card({ title, children, className = "" }: { title?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={`panel p-5 ${className}`}>
-      {title && <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">{title}</h2>}
+      {title && (
+        <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+          <span className="h-3 w-1 rounded-full bg-gradient-to-b from-cyan to-electric shadow-[0_0_8px_var(--color-cyan)]" aria-hidden />
+          {title}
+        </h2>
+      )}
       {children}
     </section>
   );
@@ -31,14 +36,14 @@ const TONES = {
 } as const;
 
 export function Badge({ tone = "muted", children }: { tone?: keyof typeof TONES; children: ReactNode }) {
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${TONES[tone]}`}>{children}</span>;
+  return <span className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${TONES[tone]}`}>{children}</span>;
 }
 
 export function Notice({ tone = "info", children }: { tone?: "info" | "warn" | "danger"; children: ReactNode }) {
   const Icon = tone === "info" ? Info : AlertTriangle;
   const color = tone === "info" ? "border-electric/30 text-ink" : tone === "warn" ? "border-warn/40 text-warn" : "border-danger/40 text-danger";
   return (
-    <div className={`flex gap-3 rounded-xl border bg-graphite/60 p-3 text-sm ${color}`} role={tone === "info" ? "status" : "alert"}>
+    <div className={`flex gap-3 rounded-xl border bg-graphite/70 p-3 text-sm backdrop-blur ${color}`} role={tone === "info" ? "status" : "alert"}>
       <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <div>{children}</div>
     </div>

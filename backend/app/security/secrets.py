@@ -27,6 +27,7 @@ class SecretStore:
     def __init__(self, env_key: str | None, use_keyring: bool = True) -> None:
         self._env_key = env_key.strip() if env_key else None
         self._memory_key: str | None = None
+        self._memory_secrets: dict[str, str] = {}
         self._keyring = None
         if use_keyring:
             try:
@@ -73,6 +74,35 @@ class SecretStore:
         if self._keyring is not None:
             try:
                 self._keyring.delete_password(SERVICE_NAME, KEY_NAME)
+            except Exception:  # noqa: BLE001 - no existía
+                pass
+
+
+    # ---- Secretos de integraciones (tokens, variables de entorno sensibles) ----
+
+    def get_secret(self, name: str) -> str | None:
+        if self._keyring is not None:
+            try:
+                value = self._keyring.get_password(SERVICE_NAME, name)
+                if value:
+                    return value
+            except Exception as e:  # noqa: BLE001
+                log.error("No se pudo leer el secreto %s: %s", name, e)
+        return self._memory_secrets.get(name)
+
+    def set_secret(self, name: str, value: str) -> KeySource:
+        if self._keyring is not None:
+            self._keyring.set_password(SERVICE_NAME, name, value)
+            self._memory_secrets.pop(name, None)
+            return "keyring"
+        self._memory_secrets[name] = value
+        return "memory"
+
+    def delete_secret(self, name: str) -> None:
+        self._memory_secrets.pop(name, None)
+        if self._keyring is not None:
+            try:
+                self._keyring.delete_password(SERVICE_NAME, name)
             except Exception:  # noqa: BLE001 - no existía
                 pass
 

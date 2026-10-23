@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from typing import Any
 
 from app.providers.base import (
     AIProvider,
@@ -16,6 +17,7 @@ from app.providers.base import (
     GenerationOptions,
     ProviderEvent,
     TextDelta,
+    ToolExecutor,
     Usage,
     ValidationResult,
 )
@@ -34,9 +36,12 @@ class DemoProvider(AIProvider):
         return True
 
     async def stream_chat(
-        self, *, system: str, turns: list[ChatTurn], options: GenerationOptions
+        self, *, system: str, turns: list[ChatTurn], options: GenerationOptions,
+        tools: list[dict[str, Any]] | None = None, executor: ToolExecutor | None = None,
     ) -> AsyncIterator[ProviderEvent]:
         last = turns[-1].content if turns else ""
+        if isinstance(last, list):  # bloques: el mensaje del usuario es el último bloque de texto
+            last = next((b.get("text", "") for b in reversed(last) if b.get("type") == "text"), "")
         text = (
             f"{DEMO_PREFIX}Recibí tu mensaje ({len(last)} caracteres). "
             "Para conversar con Claude, desactivá KAI_DEMO_MODE y configurá una clave de API."

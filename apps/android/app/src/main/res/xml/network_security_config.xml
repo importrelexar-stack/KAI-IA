@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  KAI Core corre en tu PC dentro de tu red privada y habla HTTP (sin certificado).
+  Se permite tráfico sin cifrar, pero la app sólo se conecta a direcciones privadas
+  (LAN, Tailscale 100.64/10, *.ts.net) — ver ai.kai.core.PrivateNetwork.
+  Recomendado: Tailscale, que cifra todo el tráfico de punta a punta (WireGuard).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

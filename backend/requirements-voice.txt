@@ -1,0 +1,3 @@
+# Voz local (Fase 2). Opcional: sin estos paquetes KAI usa la voz del navegador.
+faster-whisper>=1.1,<2
+piper-tts>=1.3,<2

@@ -6,31 +6,73 @@ Backend FastAPI, Claude API real con streaming, interfaz React, chat con histori
 configuración de clave y preferencias, estados del asistente en tiempo real, motor de tareas, CoworkBridge
 manual, seguridad base, scripts de Windows, pruebas y documentación.
 
-## Fase 2 — Voz
+## ✅ Fase 2 — Voz (esta versión)
 
-Implementar `voice/` (interfaces ya definidas): captura de micrófono en la interfaz (Web Audio /
-Tauri), STT y TTS intercambiables (local: whisper.cpp / Piper; nube), palabra de activación «Hey KAI»
-local con consentimiento explícito, detección de silencios, interrupción, selección de dispositivos,
-endpoints `/voice/transcribe` y `/voice/synthesize`, estados `listening` / `speaking`.
+Captura PCM con AudioWorklet, detección de voz con ruido adaptativo, Whisper local, Piper `es_AR`,
+alternativa del navegador, respuestas habladas breves, interrupción (botón, Esc y barge-in), manos libres
+«Hey KAI» con consentimiento, dictado en el chat, selección de dispositivos, descarga de modelos a pedido.
 
-## Fase 3 — Memoria y agentes
+Pendiente para más adelante: streaming de transcripción y de síntesis (menor latencia), detector de palabra
+de activación dedicado (más liviano que Whisper continuo), voz con la ventana minimizada (requiere la app
+de escritorio Tauri).
 
-Memoria de preferencias, proyectos y operativa con controles de privacidad; búsqueda semántica
-(embeddings locales + SQLite); orquestador con tool use de Claude; agentes Planner, Memory, Research y
-Code con límites de tiempo, cancelación y presupuesto por tarea.
+## ✅ Fase 3 — Memoria y agentes (esta versión)
 
-## Fase 4 — Automatización Windows
+Memoria de preferencias, datos y proyectos con aprobación y controles de privacidad; búsqueda local FTS5;
+proyectos con decisiones, avances y próximos pasos; orquestador con tool use (Memory, Planner, Research
+opcional); tareas con dependencias; límites de pasos, tokens y tiempo; migraciones automáticas.
 
-Herramientas con permisos individuales (carpetas permitidas, apertura de aplicaciones, búsqueda local,
-lectura de PDF, organización de carpetas, scripts en lista blanca), ejecución desde el motor de tareas,
-confirmaciones y auditoría detallada. Empaquetado Tauri 2 con KAI Core como sidecar e instalador.
+Pendiente: búsqueda semántica con embeddings locales (la interfaz está preparada), agente Code (pasa a la
+Fase 4 junto con el acceso a archivos).
 
-## Fase 5 — Android
+## ✅ Fase 4 — Automatización Windows (esta versión)
 
-App Kotlin + Compose, emparejamiento seguro por QR, conexión por VPN privada, chat, voz, tareas,
-historial y notificaciones.
+Carpetas autorizadas con modo lectura/escritura, búsqueda y lectura (texto, PDF, Word), creación,
+escritura con copia de seguridad, movimiento sin sobrescritura, orden de carpetas con vista previa,
+papelera, apertura de archivos y apps registradas, scripts registrados con tiempo máximo, niveles por
+herramienta, confirmación desde el chat y auditoría.
 
-## Fase 6 — Integraciones
+## ✅ Fase 4b — App de escritorio (esta versión)
 
-Claude Cowork (si se publica una integración oficial), MCP, calendario, correo, gestión de proyectos,
-navegación y automatizaciones complejas.
+Tauri 2 con KAI Core como sidecar (PyInstaller, incluye voz local), instalador NSIS por usuario, bandeja,
+Ctrl+Alt+K, instancia única, cierre ordenado y watchdog. Build y prueba automática en Windows.
+
+Pendiente: firma digital del instalador, actualización automática, voz/«Hey KAI» con la ventana oculta,
+lectura de planillas Excel.
+
+## 🧪 Fase 5 — Android (beta, esta versión)
+
+KAI Core: acceso remoto sólo desde redes privadas (LAN / Tailscale) y con interruptor, vinculación por
+código de un solo uso con QR, token por dispositivo (hash, revocable, el teléfono puede desvincularse),
+permisos limitados para dispositivos (no administran KAI), adjuntos en el chat (documentos como datos,
+imágenes visibles para Claude) desde la web y el teléfono.
+
+App Kotlin + Compose: vinculación por QR o a mano, chat en streaming, adjuntar archivos y fotos
+(se achican antes de enviar), voz (graba en el teléfono, transcribe y habla con los motores locales de la PC),
+tareas con autorizar/rechazar mostrando la acción exacta, historial, notificaciones de autorizaciones
+(cada 15 min y con la app abierta), token cifrado con Android Keystore. Compilación, lint y pruebas en CI,
+más una prueba de contrato del cliente contra KAI Core real.
+
+Por qué «beta»: el APK se compila y prueba en CI, pero todavía no se probó en un teléfono físico.
+
+Agregado después: rutinas en el teléfono (ver, ejecutar, aviso al terminar) y respuestas con formato.
+
+Pendiente: notificaciones en tiempo real (push sin Google requiere un servicio en primer plano), «Hey KAI»
+en el teléfono, firma de release y publicación en tiendas.
+
+## ✅ Fase 6 — Integraciones (esta versión)
+
+- **MCP**: KAI es cliente MCP (SDK oficial). Servidores locales (stdio) o remotos (HTTP con token);
+  herramientas con nivel permitir/preguntar/bloquear (solo lectura → permitir por defecto; el resto →
+  autorización); claves en el almacén de credenciales; resultados marcados como datos externos. Calendario,
+  correo y gestión de proyectos se conectan a través de servidores MCP de cada servicio.
+- **Navegación**: búsqueda y lectura de páginas web de Anthropic (`web_search`/`web_fetch`), opcionales.
+- **Automatizaciones complejas**: rutinas programadas (diarias, por días de la semana o por intervalo)
+  que corren con las reglas del chat; combinadas con MCP y archivos permiten flujos de varios pasos.
+- **Claude Cowork**: sigue sin API pública; se mantiene el puente manual. Se integrará sólo si Anthropic
+  publica una integración oficial.
+
+Agregado después: inicio de sesión **OAuth** para servidores MCP remotos (registro dinámico + PKCE con el
+SDK oficial; tokens en el almacén de credenciales; «Cerrar sesión»).
+
+Pendiente: recursos y prompts de MCP (hoy: sólo herramientas).

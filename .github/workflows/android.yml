@@ -1,0 +1,78 @@
+name: App Android
+
+# Compila la app (APK de depuración), corre lint y las pruebas unitarias, y la prueba de contrato
+# del cliente del teléfono contra un KAI Core real en modo demostración.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: KAI Core (demo) para la prueba de contrato
+        working-directory: backend
+        env:
+          KAI_DEMO_MODE: "true"
+          KAI_USE_KEYRING: "false"
+          KAI_DATA_DIR: ${{ runner.temp }}/kai-data
+          KAI_PORT: "8765"
+        run: |
+          python -m pip install -r requirements.txt
+          nohup python -m app.main > "$RUNNER_TEMP/kai.log" 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8765/api/v1/health && break; sleep 1; done
+
+      - name: Núcleo (Kotlin) + contrato con KAI Core
+        working-directory: apps/android
+        env:
+          KAI_TEST_URL: http://127.0.0.1:8765
+        run: gradle :core:test --no-daemon
+
+      - name: App (APK, lint y pruebas)
+        working-directory: apps/android
+        run: gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon
+
+      - name: Registro de KAI Core
+        if: failure()
+        run: tail -n 80 "$RUNNER_TEMP/kai.log" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kai-android-debug
+          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kai-android-lint
+          path: apps/android/app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+
+      - name: Publicar descarga directa (KAI-AI.apk)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ccr-3ff91a96-1k2j0k')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp apps/android/app/build/outputs/apk/debug/app-debug.apk KAI-AI.apk
+          gh release delete kai-ai-android --yes --cleanup-tag || true
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create kai-ai-android KAI-AI.apk --target "$GITHUB_SHA" --prerelease \
+            --title "KAI AI para Android (beta)" \
+            --notes "Abrí este enlace desde el teléfono, descargá **KAI-AI.apk** e instalala (permití instalar apps de este origen). APK de prueba firmada con la clave de desarrollo. Generado desde ${GITHUB_SHA::7}."

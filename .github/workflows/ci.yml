@@ -39,3 +39,92 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  windows-scripts:
+    # Ejecuta los scripts reales de instalación y operación en Windows PowerShell 5.1.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: install.ps1
+        shell: powershell
+        run: .\scripts\install.ps1
+      - name: Acceso directo en el escritorio
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $desk = [Environment]::GetFolderPath('Desktop')
+          $lnk = Join-Path $desk 'KAI AI.lnk'
+          if (-not (Test-Path $lnk)) { throw "install.ps1 no creó el acceso directo en $desk" }
+          $ws = New-Object -ComObject WScript.Shell
+          $s = $ws.CreateShortcut($lnk)
+          $expected = (Resolve-Path .\start.bat).Path
+          if ($s.TargetPath -ine $expected) { throw "apunta a '$($s.TargetPath)' en vez de '$expected'" }
+          if ($s.IconLocation -notmatch 'icon\.ico') { throw "sin el ícono de KAI: $($s.IconLocation)" }
+          # Repetir no duplica; un «KAI AI» ajeno no se pisa; -Remove sólo quita los propios.
+          .\scripts\create-shortcut.ps1
+          if (Test-Path (Join-Path $desk 'KAI AI (scripts).lnk')) { throw "se duplicó el acceso directo" }
+          $foreign = $ws.CreateShortcut($lnk); $foreign.TargetPath = "$env:WINDIR\notepad.exe"; $foreign.Save()
+          .\scripts\create-shortcut.ps1
+          if ($ws.CreateShortcut($lnk).TargetPath -notmatch 'notepad') { throw "pisó un acceso directo ajeno" }
+          if (-not (Test-Path (Join-Path $desk 'KAI AI (scripts).lnk'))) { throw "no creó el alternativo" }
+          .\scripts\create-shortcut.ps1 -Remove
+          if (Test-Path (Join-Path $desk 'KAI AI (scripts).lnk')) { throw "-Remove no quitó el propio" }
+          if (-not (Test-Path $lnk)) { throw "-Remove quitó uno ajeno" }
+          Remove-Item $lnk
+          Write-Host "Acceso directo OK: $expected"
+      - name: start.ps1 (demo) + chat + stop.ps1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\scripts\start.ps1 -Demo -NoBrowser
+          $h = Invoke-RestMethod http://127.0.0.1:8765/api/v1/health
+          if ($h.status -ne 'ok') { throw "health falló" }
+          $page = Invoke-WebRequest http://127.0.0.1:8765/ -UseBasicParsing
+          if ($page.Content -notmatch '<div id="root">') { throw "la interfaz no se sirve" }
+          $body = @{ message = 'Hola KAI'; stream = $false } | ConvertTo-Json
+          $r = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8765/api/v1/chat -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+          if ($r.assistant_message.content -notmatch 'DEMOSTRACI') { throw "respuesta inesperada" }
+          .\scripts\stop.ps1
+          Start-Sleep -Seconds 1
+          try { Invoke-RestMethod http://127.0.0.1:8765/api/v1/health -TimeoutSec 2; throw "sigue activo" } catch { if ($_.Exception.Message -eq 'sigue activo') { throw } }
+          Write-Host "Scripts de Windows OK"
+      - name: update.ps1 no pisa cambios locales
+        shell: powershell
+        run: |
+          Add-Content README.md "`ncambio local de prueba"
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\update.ps1
+          $code = $LASTEXITCODE
+          git checkout -- README.md
+          if ($code -ne 1) { throw "update.ps1 debió negarse (código $code)" }
+          Write-Host "update.ps1 se negó a actualizar con cambios locales: OK"
+      - name: Registros si falló
+        if: failure()
+        shell: powershell
+        run: Get-ChildItem data\logs -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.Name)"; Get-Content $_.FullName -Tail 60 }
+
+  voice-integration:
+    # Descarga los modelos reales (Whisper small + Piper es_AR) y prueba voz → texto de punta a punta.
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements-dev.txt -r requirements-voice.txt
+      - run: python -m pytest tests/test_voice.py tests/test_voice_integration.py -s
+        env:
+          KAI_VOICE_INTEGRATION: "1"
+          KAI_USE_KEYRING: "false"
+          PYTHONUTF8: "1"

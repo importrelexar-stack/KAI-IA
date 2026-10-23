@@ -24,12 +24,15 @@ class Database:
             cur.execute("PRAGMA journal_mode=WAL")
             cur.close()
 
+        self.features: dict[str, bool] = {}
         self.SessionLocal = sessionmaker(bind=self.engine, autoflush=False, expire_on_commit=False)
 
     def create_all(self) -> None:
+        from app.database.migrations import run_migrations
         from app.models import entities  # noqa: F401 - registra los modelos
 
         Base.metadata.create_all(self.engine)
+        self.features = run_migrations(self.engine)
 
     def session(self) -> Iterator[Session]:
         db = self.SessionLocal()

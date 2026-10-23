@@ -95,6 +95,26 @@ export function SettingsPage() {
           <label className="text-sm">Presupuesto diario de tokens (0 = sin límite)
             <input type="number" min={0} className="field mt-1" value={prefs.daily_token_budget} onChange={(e) => setPrefs({ ...prefs, daily_token_budget: Number(e.target.value) })} />
           </label>
+          <label className="flex items-start gap-2 text-sm md:col-span-2">
+            <input type="checkbox" className="mt-1" checked={prefs.fast_mode} onChange={(e) => setPrefs({ ...prefs, fast_mode: e.target.checked })} />
+            <span>
+              Modo rápido (Claude Opus 5.5): escribe hasta 2,5 veces más rápido
+              <span className="block text-xs text-muted">
+                Cuesta el doble por token (US$ 8 / 40 por millón en lugar de 4 / 20). Sólo con Opus 5.5 u Opus 5.
+                Si se agota su límite, KAI responde a velocidad normal.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm md:col-span-2">
+            <input type="checkbox" className="mt-1" checked={prefs.auto_update} onChange={(e) => setPrefs({ ...prefs, auto_update: e.target.checked })} />
+            <span>
+              Actualizar KAI automáticamente (app de escritorio)
+              <span className="block text-xs text-muted">
+                Cada hora busca si hay una versión nueva; la baja, verifica que sea la oficial y la instala cuando no estés
+                usando KAI (unos segundos de reinicio). Tus datos se conservan.
+              </span>
+            </span>
+          </label>
           <label className="mt-6 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={prefs.use_fallbacks} onChange={(e) => setPrefs({ ...prefs, use_fallbacks: e.target.checked })} />
             Reintento automático con otro modelo si Claude rechaza por seguridad
@@ -110,6 +130,32 @@ export function SettingsPage() {
           </label>
           <div className="md:col-span-2"><button className="btn btn-primary"><Save className="h-4 w-4" />Guardar preferencias</button></div>
         </form>
+      </Card>
+
+      <Card title="Memoria y agentes">
+        <div className="space-y-3 text-sm">
+          {([
+            ["memory_enabled", "Usar la memoria en las conversaciones", "KAI tiene en cuenta tus preferencias y recupera datos relevantes."],
+            ["memory_auto_approve", "Aprobar automáticamente lo que KAI propone recordar", "Si está apagado, cada propuesta espera tu aprobación en la pantalla Memoria."],
+            ["agents_enabled", "Permitir que KAI use herramientas (memoria, tareas, planes, proyectos)", "Sin herramientas, KAI sólo conversa."],
+            ["web_search_enabled", "Búsqueda web (KAI Research)", "Usa la búsqueda web de Anthropic: tiene costo adicional por búsqueda (máx. 5 por respuesta)."],
+            ["web_fetch_enabled", "Lectura de páginas web", "Claude puede abrir las páginas que le pases o que encuentre la búsqueda (máx. 5 por respuesta, con costo por tokens)."],
+          ] as const).map(([key, label, help]) => (
+            <label key={key} className="flex items-start gap-2">
+              <input type="checkbox" className="mt-1" checked={prefs[key]} onChange={(e) => {
+                const next = { ...prefs, [key]: e.target.checked };
+                setPrefs(next);
+                void run(() => put("/settings", { [key]: e.target.checked }), "Preferencias guardadas.");
+              }} />
+              <span>{label}<span className="block text-xs text-muted">{help}</span></span>
+            </label>
+          ))}
+          <label className="block max-w-xs">Máximo de pasos de herramientas por respuesta
+            <input type="number" min={1} max={15} className="field mt-1" value={prefs.max_tool_iterations}
+              onChange={(e) => setPrefs({ ...prefs, max_tool_iterations: Number(e.target.value) })}
+              onBlur={() => void run(() => put("/settings", { max_tool_iterations: prefs.max_tool_iterations }), "Preferencias guardadas.")} />
+          </label>
+        </div>
       </Card>
 
       <Card title="Privacidad">

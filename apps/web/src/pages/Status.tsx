@@ -5,13 +5,15 @@ import type { SystemStatus } from "../lib/api";
 
 const FEATURE: Record<string, string> = {
   chat: "Chat con Claude", history: "Historial persistente", tasks: "Motor de tareas", cowork_bridge: "CoworkBridge",
-  voice: "Voz", agents: "Agentes especializados", automation: "Automatización Windows", files: "Archivos", android: "Android",
+  voice: "Voz", agents: "Agentes especializados", automation: "Automatización Windows", files: "Archivos", attachments: "Adjuntos en el chat", android: "Android", integrations: "Integraciones (MCP y web)", routines: "Rutinas programadas",
 };
 const FEATURE_STATE: Record<string, { label: string; tone: "ok" | "warn" | "muted" | "info" }> = {
   available: { label: "Disponible", tone: "ok" },
   needs_api_key: { label: "Falta clave de API", tone: "warn" },
   manual: { label: "Manual", tone: "info" },
   planned: { label: "Planificado", tone: "muted" },
+  beta: { label: "Beta", tone: "info" },
+  disabled: { label: "Desactivado", tone: "muted" },
 };
 
 interface AuditEntry { id: number; action: string; target: string | null; client: string | null; created_at: string }

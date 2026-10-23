@@ -13,13 +13,33 @@ from pathlib import Path
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+import os
+import sys
+
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = BACKEND_DIR.parent
+
+# Empaquetado con PyInstaller (app de escritorio): los datos van a la carpeta del usuario
+# y la interfaz viaja dentro del ejecutable.
+FROZEN = bool(getattr(sys, "frozen", False))
+
+
+def _user_data_dir() -> Path:
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "KAI"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "KAI"
+    return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "kai"
+
+
+DEFAULT_DATA_DIR = _user_data_dir() if FROZEN else REPO_ROOT / "data"
+DEFAULT_WEB_DIST = (Path(getattr(sys, "_MEIPASS", BACKEND_DIR)) / "web") if FROZEN else REPO_ROOT / "apps" / "web" / "dist"
+ENV_FILES = (str(DEFAULT_DATA_DIR / ".env"),) if FROZEN else (str(REPO_ROOT / ".env"), str(BACKEND_DIR / ".env"))
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(str(REPO_ROOT / ".env"), str(BACKEND_DIR / ".env")),
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -41,8 +61,8 @@ class Settings(BaseSettings):
     )
 
     # Datos
-    data_dir: Path = Field(default=REPO_ROOT / "data", alias="KAI_DATA_DIR")
-    web_dist: Path = Field(default=REPO_ROOT / "apps" / "web" / "dist", alias="KAI_WEB_DIST")
+    data_dir: Path = Field(default=DEFAULT_DATA_DIR, alias="KAI_DATA_DIR")
+    web_dist: Path = Field(default=DEFAULT_WEB_DIST, alias="KAI_WEB_DIST")
 
     # IA
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
@@ -51,6 +71,7 @@ class Settings(BaseSettings):
     # Seguridad
     chat_rate_limit_per_minute: int = Field(default=20, alias="KAI_CHAT_RATE_LIMIT")
     max_upload_mb: int = Field(default=25, alias="KAI_MAX_UPLOAD_MB")
+    routines_enabled: bool = Field(default=True, alias="KAI_ROUTINES")
     use_keyring: bool = Field(default=True, alias="KAI_USE_KEYRING")
 
     @field_validator("allowed_origins", mode="before")
@@ -59,6 +80,12 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
+
+    @property
+    def effective_origins(self) -> list[str]:
+        """Orígenes permitidos + la propia interfaz servida por KAI Core en el puerto configurado."""
+        own = [f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}"]
+        return list(dict.fromkeys([*self.allowed_origins, *own]))
 
     @property
     def database_url(self) -> str:
@@ -72,8 +99,12 @@ class Settings(BaseSettings):
     def cowork_dir(self) -> Path:
         return self.data_dir / "cowork"
 
+    @property
+    def voice_models_dir(self) -> Path:
+        return self.data_dir / "voice-models"
+
     def ensure_dirs(self) -> None:
-        for d in (self.data_dir, self.logs_dir, self.cowork_dir):
+        for d in (self.data_dir, self.logs_dir, self.cowork_dir, self.voice_models_dir):
             d.mkdir(parents=True, exist_ok=True)
 
 

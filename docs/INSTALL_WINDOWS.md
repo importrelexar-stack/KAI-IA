@@ -1,11 +1,36 @@
 # Instalación en Windows 10/11
 
+## Opción A — App de escritorio (recomendada)
+
+1. Descargá **[Instalar-KAI-AI.exe](https://github.com/importrelexar-stack/KAI-IA/releases/download/kai-ai-windows/Instalar-KAI-AI.exe)** (enlace directo, no hace falta cuenta de GitHub).
+2. Ejecutalo (instala para tu usuario, sin permisos de administrador). Si SmartScreen avisa que el
+   archivo no está firmado: «Más información» → «Ejecutar de todos modos».
+3. Abrí **KAI AI** con el acceso directo del escritorio o desde el menú Inicio (el instalador crea los
+   dos). La primera vez tarda unos segundos en iniciar.
+4. Configurá tu clave de API en Configuración.
+5. Para hablarle a KAI, la primera vez tocá **Descargar ahora** en la pantalla Voz (modelo de
+   reconocimiento local, ~465 MB, una sola vez). En la app de escritorio el reconocimiento «del navegador»
+   no está disponible (el componente WebView2 de Windows no trae ese servicio), por eso se usa el local.
+
+**Actualizar:** es automático. Cada hora KAI busca si hay una versión nueva, la descarga, verifica su SHA-256
+y la instala cuando no la estás usando (se reinicia sola en unos segundos). Se puede desactivar en
+Configuración → «Actualizar KAI automáticamente». También podés forzarlo: abajo a la izquierda aparece
+**Actualizar a vX.Y.Z**: KAI descarga el instalador oficial, verifica su SHA-256, se
+cierra, se actualiza y se vuelve a abrir solo (tus datos se conservan). El ícono ↻ al lado de la versión
+busca actualizaciones en el momento.
+
+Datos en `%LOCALAPPDATA%\KAI`. Para salir: ícono de KAI en la bandeja → Salir. Atajo: Ctrl+Alt+K.
+Para desinstalar: Configuración de Windows → Aplicaciones → KAI AI (los datos de `%LOCALAPPDATA%\KAI`
+se conservan; borralos a mano si querés).
+
+## Opción B — Desde el código fuente
+
 ## 1. Requisitos
 
 | Componente | Necesario para | Cómo instalarlo |
 |---|---|---|
 | **Python 3.11 o superior** | KAI Core (obligatorio) | [python.org](https://www.python.org/downloads/windows/) — marcá *Add python.exe to PATH* — o `winget install Python.Python.3.13` |
-| **Node.js LTS** (20.19+ / 22.12+) | Compilar la interfaz | [nodejs.org](https://nodejs.org) o `winget install OpenJS.NodeJS.LTS` |
+| Node.js LTS (20.19+ / 22.12+) | Opcional: compilar la interfaz vos mismo | [nodejs.org](https://nodejs.org) o `winget install OpenJS.NodeJS.LTS` |
 | Git | Clonar el repositorio | [git-scm.com](https://git-scm.com) o `winget install Git.Git` |
 | Clave de API de Anthropic | Chat real con Claude | [console.anthropic.com](https://console.anthropic.com) |
 
@@ -33,8 +58,11 @@ El instalador:
 1. Busca Python 3.11+ (`py` o `python`).
 2. Crea `backend\.venv` e instala `backend\requirements.txt` (con `-Dev`, también las de pruebas).
 3. Copia `.env.example` a `.env` si no existe (nunca lo sobrescribe).
-4. Si hay Node.js, compila la interfaz en `apps\web\dist`. Si no, te avisa: KAI Core funciona igual y
-   expone la API en `http://127.0.0.1:8765/docs`.
+4. Instala los motores de voz locales (Whisper y Piper, ~150 MB de paquetes). Si fallan, KAI sigue
+   funcionando con la voz del navegador. Para omitirlos: `scripts\install.ps1 -NoVoice`.
+5. Si hay Node.js, compila la interfaz en `apps\web\dist`. Si no, descarga la interfaz ya compilada por
+   GitHub Actions (release `web-latest` del repositorio). Si tampoco hay Internet, KAI Core funciona igual
+   y expone la API en `http://127.0.0.1:8765/docs`.
 
 ## 3. Configurar Claude
 
@@ -53,7 +81,23 @@ Si existe en `.env`, tiene prioridad y la interfaz no permite cambiarla.
 En **Configuración** también elegís modelo, esfuerzo de razonamiento, máximo de tokens, contexto enviado y
 **presupuesto diario de tokens** (por defecto 500.000; 0 = sin límite).
 
-## 4. Iniciar y detener
+## Actualizar (instalación desde el código)
+
+Cerrá KAI y ejecutá `actualizar.bat`: detiene KAI, hace `git pull --ff-only` y reinstala dependencias. Si
+modificaste archivos de la carpeta, no actualiza (no pisa tus cambios) y te lo indica.
+
+## 4. Voz
+
+1. Abrí la pantalla **Voz**.
+2. En «Reconocimiento de voz» y «Voz de KAI», tocá **Descargar modelo** (una sola vez; Whisper small
+   ~465 MB, voz Daniela ~110 MB). Quedan en `data\voice-models`.
+3. Tocá **Hablar** (o el núcleo). La primera vez el navegador pide permiso para el micrófono.
+4. Opcional: **Manos libres** para activar con «Hey KAI» (pide tu consentimiento).
+
+Si Windows bloquea el micrófono: *Configuración → Privacidad y seguridad → Micrófono* y habilitá el acceso
+para el navegador.
+
+## 5. Iniciar y detener
 
 ```powershell
 .\start.bat              # producción: http://127.0.0.1:8765 (abre el navegador)
@@ -64,7 +108,7 @@ scripts\start.ps1 -Demo  # modo demostración: sin IA, respuestas marcadas como 
 `start.ps1` corre KAI Core en segundo plano, guarda el PID en `data\kai.pid` y escribe registros en
 `data\logs\`. `stop.ps1` detiene sólo ese proceso (y su proceso hijo).
 
-## 5. Modo desarrollo
+## 6. Modo desarrollo
 
 ```powershell
 scripts\install.ps1 -Dev
@@ -74,7 +118,7 @@ scripts\start-dev.ps1        # backend con recarga (8765) + Vite (5173) en venta
 Abrí `http://127.0.0.1:5173`. Vite reenvía `/api` (HTTP y WebSocket) al backend. Para detener, cerrá
 ambas ventanas o `Ctrl+C`.
 
-## 6. Pruebas
+## 7. Pruebas
 
 ```powershell
 scripts\test.ps1
@@ -83,13 +127,21 @@ scripts\test.ps1
 Corre `pytest` en el backend y, si hay Node.js, verificación de tipos + Vitest en el frontend. Las pruebas
 **no usan claves reales**: el proveedor de IA está simulado.
 
-## 7. Datos
+## 8. Datos
 
-Todo queda en `data\` (excluido de git): `kai.db` (SQLite), `logs\`, `cowork\` (archivos importados) y
-`access_token`. Para mover la carpeta, definí `KAI_DATA_DIR` en `.env`.
+Todo queda en `data\` (excluido de git): `kai.db` (SQLite), `logs\`, `cowork\` (archivos importados),
+`access_token` y `voice-models\`. Para mover la carpeta, definí `KAI_DATA_DIR` en `.env`.
 
-## 8. Desinstalar
+## 9. Desinstalar
 
 Detené KAI, borrá la carpeta del repositorio y, si guardaste la clave desde la interfaz, eliminá la
 credencial `kai-ai` en *Panel de control → Administrador de credenciales → Credenciales de Windows*
 (o usá **Borrar** en Configuración antes de desinstalar).
+
+## Acceso directo en el escritorio
+
+- **App de escritorio:** el instalador crea «KAI AI» en el escritorio y en el menú Inicio.
+- **Desde el código:** `install.bat` crea «KAI AI» en el escritorio (abre `start.bat` con el ícono de
+  KAI). Si lo borraste o lo querés también en el menú Inicio: doble clic en `crear-acceso-directo.bat`
+  (o `scripts\create-shortcut.ps1 -StartMenu`). Para quitarlo: `scripts\create-shortcut.ps1 -Remove`.
+  Si ya existe un «KAI AI» de la app instalada, el script no lo pisa y crea «KAI AI (scripts)».
