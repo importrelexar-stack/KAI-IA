@@ -21,21 +21,22 @@ import { RoutinesPage } from "./pages/Routines";
 import { UpdateButton } from "./components/UpdateButton";
 
 const NAV = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "chat", label: "Chat", icon: MessageSquare },
-  { id: "voice", label: "Voz", icon: Mic },
-  { id: "agents", label: "Agentes", icon: Bot },
-  { id: "tasks", label: "Automatizaciones", icon: ListChecks },
-  { id: "cowork", label: "Cowork", icon: Share2 },
-  { id: "memory", label: "Memoria", icon: Brain },
-  { id: "files", label: "Archivos", icon: FolderOpen },
-  { id: "routines", label: "Rutinas", icon: CalendarClock },
-  { id: "integrations", label: "Integraciones", icon: Plug },
-  { id: "devices", label: "Dispositivos", icon: Smartphone },
-  { id: "history", label: "Historial", icon: History },
-  { id: "settings", label: "Configuración", icon: Settings },
-  { id: "status", label: "Estado del sistema", icon: Activity },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Principal" },
+  { id: "chat", label: "Chat", icon: MessageSquare, group: "Principal" },
+  { id: "voice", label: "Voz", icon: Mic, group: "Principal" },
+  { id: "tasks", label: "Automatizaciones", icon: ListChecks, group: "Trabajo" },
+  { id: "routines", label: "Rutinas", icon: CalendarClock, group: "Trabajo" },
+  { id: "agents", label: "Agentes", icon: Bot, group: "Trabajo" },
+  { id: "memory", label: "Memoria", icon: Brain, group: "Trabajo" },
+  { id: "files", label: "Archivos", icon: FolderOpen, group: "Trabajo" },
+  { id: "cowork", label: "Cowork", icon: Share2, group: "Trabajo" },
+  { id: "integrations", label: "Integraciones", icon: Plug, group: "Conexiones" },
+  { id: "devices", label: "Dispositivos", icon: Smartphone, group: "Conexiones" },
+  { id: "history", label: "Historial", icon: History, group: "Sistema" },
+  { id: "settings", label: "Configuración", icon: Settings, group: "Sistema" },
+  { id: "status", label: "Estado del sistema", icon: Activity, group: "Sistema" },
 ] as const;
+const GROUPS = ["Principal", "Trabajo", "Conexiones", "Sistema"] as const;
 
 type Route = (typeof NAV)[number]["id"];
 
@@ -66,36 +67,39 @@ export default function App() {
 
   return (
     <div className="flex h-full">
-      <nav className="flex w-60 shrink-0 flex-col border-r border-line bg-graphite/50 p-3 backdrop-blur" aria-label="Principal">
-        <a href="#/dashboard" className="mb-5 flex items-center gap-3 px-2 pt-2">
-          <KaiCore state={state} size={36} />
+      <nav className="flex w-64 shrink-0 flex-col border-r border-line/70 bg-graphite/60 p-3 backdrop-blur-xl" aria-label="Principal">
+        <a href="#/dashboard" className="mb-4 flex items-center gap-3 rounded-xl px-2 py-2">
+          <KaiCore state={state} size={40} />
           <div>
-            <div className="text-lg font-semibold tracking-[0.2em]">KAI</div>
-            <div className="text-[11px] text-muted">{connected ? STATE_LABEL[state] : "Sin conexión con KAI Core"}</div>
+            <div className="text-gradient text-lg font-semibold tracking-[0.35em]">KAI</div>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted">
+              <span className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-ok shadow-[0_0_6px_var(--color-ok)]" : "bg-danger"}`} aria-hidden />
+              {connected ? STATE_LABEL[state] : "Sin conexión con KAI Core"}
+            </div>
           </div>
         </a>
-        <ul className="space-y-0.5">
-          {NAV.map(({ id, label, icon: Icon, ...rest }) => (
-            <li key={id}>
-              <a
-                href={`#/${id}`}
-                aria-current={route === id ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                  route === id ? "bg-electric/15 text-ink" : "text-muted hover:bg-white/5 hover:text-ink"
-                }`}
-              >
-                <Icon className="h-4 w-4" aria-hidden />
-                <span className="flex-1">{label}</span>
-                {"future" in rest && <span className="text-[10px] uppercase text-muted/70">pronto</span>}
-              </a>
-            </li>
+        <div className="-mr-1 min-h-0 flex-1 overflow-y-auto pr-1">
+          {GROUPS.map((g) => (
+            <div key={g} className="mb-3">
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted/60">{g}</div>
+              <ul className="space-y-0.5">
+                {NAV.filter((n) => n.group === g).map(({ id, label, icon: Icon }) => (
+                  <li key={id}>
+                    <a href={`#/${id}`} aria-current={route === id ? "page" : undefined} className="nav-item">
+                      <Icon className="h-4 w-4" aria-hidden />
+                      <span className="flex-1">{label}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
-        <UpdateButton version="0.9.5" />
+        </div>
+        <UpdateButton version="0.9.6" />
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
-        <div className={route === "chat" ? "h-full" : "mx-auto max-w-6xl p-8"}>
+        <div key={route} className={route === "chat" ? "h-full" : "fade-up mx-auto max-w-6xl p-8"}>
           {route === "dashboard" && <Dashboard state={state} detail={detail} connected={connected} />}
           {route === "chat" && <ChatPage conversationId={param} />}
           {route === "history" && <HistoryPage />}

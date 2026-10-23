@@ -63,7 +63,7 @@ export function UpdateButton({ version }: { version: string }) {
 
   const phase = state.phase;
   return (
-    <div className="mt-auto space-y-1 px-2 pb-1 text-[11px] text-muted">
+    <div className="mt-3 space-y-1 border-t border-line/60 px-2 pb-1 pt-3 text-[11px] text-muted">
       {info?.available && phase !== "launched" && (
         <button className="btn btn-primary w-full justify-center text-xs" onClick={() => void install()}
           disabled={phase === "downloading" || phase === "launching"} title={info.latest.notes}>

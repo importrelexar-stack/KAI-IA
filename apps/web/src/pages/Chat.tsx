@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Copy, FileText, Image as ImageIcon, Loader2, Mic, Paperclip, Plus, Send, Square, Wrench, X } from "lucide-react";
 import { Notice } from "../components/ui";
+import { KaiCore } from "../components/KaiCore";
 import { useApi } from "../hooks/useApi";
 import { get, reportVoiceState, streamChat, transcribe, uploadAttachment, type AttachmentOut, type ConversationDetail, type ConversationSummary, type Message, type SystemStatus, type VoiceStatus } from "../lib/api";
 import { micErrorMessage } from "../lib/audio";
@@ -22,6 +23,13 @@ function AttachmentIcon({ kind }: { kind: string }) {
 interface UiMessage extends Message {
   pending?: boolean;
 }
+
+const SUGGESTIONS = [
+  "Abrí Excel",
+  "Resumime mis tareas pendientes",
+  "Armá un plan para mejorar la rentabilidad de mis publicaciones",
+  "Ayudame a redactar una respuesta para un cliente",
+];
 
 export function ChatPage({ conversationId }: { conversationId: string | null }) {
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -177,12 +185,12 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
 
   return (
     <div className="flex h-full">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-line p-3 lg:flex" aria-label="Conversaciones">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-line/70 bg-graphite/30 p-3 lg:flex" aria-label="Conversaciones">
         <button className="btn btn-primary mb-3 justify-center" onClick={() => navigate("chat")}><Plus className="h-4 w-4" />Nueva</button>
         <ul className="flex-1 space-y-0.5 overflow-y-auto">
           {convs.data?.map((c) => (
             <li key={c.id}>
-              <a href={`#/chat/${c.id}`} className={`block truncate rounded-lg px-3 py-2 text-sm ${c.id === conversationId ? "bg-electric/15" : "text-muted hover:bg-white/5 hover:text-ink"}`}>
+              <a href={`#/chat/${c.id}`} aria-current={c.id === conversationId ? "page" : undefined} className="nav-item block truncate">
                 {c.title}
               </a>
             </li>
@@ -198,9 +206,16 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
             )}
             {status.data?.provider.demo_mode && <Notice tone="warn">Modo demostración: las respuestas no provienen de una IA.</Notice>}
             {!messages.length && !unavailable && (
-              <div className="pt-20 text-center text-muted">
-                <p className="text-lg text-ink">¿En qué te ayudo?</p>
+              <div className="flex flex-col items-center pt-14 text-center text-muted">
+                <KaiCore state="idle" size={110} />
+                <p className="text-gradient mt-5 text-2xl font-semibold">¿En qué te ayudo?</p>
                 <p className="mt-1 text-sm">Tu conversación queda guardada en el historial.</p>
+                <div className="mt-6 flex max-w-2xl flex-wrap justify-center gap-2">
+                  {SUGGESTIONS.map((sug) => (
+                    <button key={sug} type="button" className="chip transition hover:border-cyan/60 hover:bg-cyan/10"
+                      onClick={() => setInput(sug)}>{sug}</button>
+                  ))}
+                </div>
               </div>
             )}
             {messages.map((m) => <Bubble key={m.id} m={m} streaming={busy && m.pending === true && m.role === "assistant"} />)}
@@ -209,7 +224,7 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
           </div>
         </div>
 
-        <form className="border-t border-line p-4" onSubmit={(e) => { e.preventDefault(); void send(); }}
+        <form className="border-t border-line/70 bg-graphite/40 p-4 backdrop-blur" onSubmit={(e) => { e.preventDefault(); void send(); }}
           onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void attach(e.dataTransfer.files); }}>
           {(attachments.length > 0 || uploading > 0) && (
             <ul className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-2" aria-label="Archivos adjuntos">
@@ -263,7 +278,7 @@ function Bubble({ m, streaming }: { m: UiMessage; streaming: boolean }) {
   const isUser = m.role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`group max-w-[85%] rounded-2xl px-4 py-3 text-[0.95rem] ${isUser ? "bg-electric/20 border border-electric/30" : "panel"}`}>
+      <div className={`group max-w-[85%] rounded-2xl px-4 py-3 text-[0.95rem] ${isUser ? "rounded-br-md border border-electric/30 bg-gradient-to-br from-electric/30 to-violet/20 shadow-[0_8px_24px_-12px_rgb(47_123_255/0.6)]" : "panel rounded-bl-md"}`}>
         {!isUser && m.tool_events && m.tool_events.length > 0 && (
           <ul className="mb-2 flex flex-wrap gap-1.5" aria-label="Acciones de KAI">
             {m.tool_events.map((t, i) => (
