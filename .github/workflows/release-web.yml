@@ -1,0 +1,38 @@
+name: Interfaz precompilada
+
+# Publica apps/web compilada como release "web-latest" para que scripts\install.ps1
+# pueda instalar la interfaz en equipos sin Node.js.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Compilar
+        working-directory: apps/web
+        run: |
+          npm ci --no-fund --no-audit
+          npm run build
+          echo "${GITHUB_SHA}" > dist/BUILD_COMMIT
+          cd dist && zip -qr ../kai-web-dist.zip .
+      - name: Publicar release web-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete web-latest --yes --cleanup-tag || true
+          gh release create web-latest apps/web/kai-web-dist.zip \
+            --target "${GITHUB_SHA}" --prerelease \
+            --title "Interfaz web precompilada (último main)" \
+            --notes "Generada automáticamente desde ${GITHUB_SHA}. La usa scripts/install.ps1 cuando no hay Node.js."

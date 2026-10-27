@@ -48,12 +48,100 @@ Eventos SSE: `meta` (ids y título) → `delta`* → `done` | `error`.
 Para agregar otro proveedor: implementar `AIProvider` y registrarlo en `core/context.py`
 (`provider_factory`). KAI Core no conoce detalles de ningún proveedor fuera de esa interfaz.
 
+## Integraciones y rutinas (Fase 6)
+
+- `app/integrations/mcp_manager.py`: `McpManager` mantiene una `McpConnection` por servidor MCP. Cada
+  conexión es una tarea asyncio que abre la sesión (stdio o HTTP streamable con el SDK oficial `mcp`),
+  lista las herramientas y atiende las llamadas desde una cola (los contextos de MCP se abren y cierran
+  en la misma tarea). Configuración en `settings.mcp_servers`; secretos en el almacén de credenciales.
+- `app/integrations/mcp_tools.py`: el ejecutor de herramientas del chat deriva los nombres `mcp_*` acá:
+  permitir → llamada directa; preguntar → tarea `awaiting_approval` con `action.kind = "mcp"`, que el
+  endpoint de aprobación ejecuta (desde su hilo, en el loop de KAI con `run_coroutine_threadsafe`).
+- `app/routines/`: `schedule.py` (horarios y próxima ejecución en hora local con DST) y `runner.py`
+  (planificador cada 30 s que llama a `stream_chat` con la conversación propia de cada rutina).
+- Web: `web_search_20260209` y `web_fetch_20260209` son herramientas del servidor de Anthropic.
+
+## App de escritorio (Fase 4b)
+
+```
+KAI AI.exe (Tauri 2, WebView2)
+  ├─ pantalla de carga local (apps/desktop/splash)
+  ├─ inicia kai-core.exe (PyInstaller: KAI Core + interfaz + voz) con KAI_PARENT_PID y KAI_SHUTDOWN_TOKEN
+  ├─ espera /api/v1/health y navega a http://127.0.0.1:8765 (misma interfaz que la versión web)
+  ├─ bandeja (Abrir/Salir), Ctrl+Alt+K, instancia única
+  └─ al salir: POST /api/v1/system/shutdown (token) → si no responde, termina el proceso
+kai-core: si la app desaparece, el watchdog lo detecta y se detiene.
+```
+
+La interfaz no usa IPC de Tauri: habla con KAI Core por HTTP como en el navegador, así que una sola
+base de código sirve para web, escritorio y, más adelante, Android.
+
+## Automatización (Fase 4)
+
+```
+Claude ─tool_use─► automation_tools.request
+                     ├─ nivel "deny"  → error
+                     ├─ lectura / "allow" → prepare (valida) → execute → resultado
+                     └─ "ask" → prepare (vista previa) → Task(awaiting_approval, action)
+Usuario ─Autorizar─► POST /tasks/{id}/approval → run_approved → execute (re-valida permisos)
+                     → Task completed/failed + mensaje en la conversación + auditoría
+```
+
+- `automation/permissions.py`: `Permissions` (carpetas, apps, scripts, niveles) y `PathGuard`, que
+  resuelve rutas (incluidos enlaces simbólicos), exige que estén dentro de una carpeta autorizada, respeta
+  sólo-lectura y bloquea carpetas del sistema, la carpeta de datos de KAI y nombres sensibles.
+- `automation/files.py`: operaciones (listar, buscar, leer texto/PDF/DOCX, crear, escribir con copia de
+  seguridad, mover sin sobrescribir, plan de orden, papelera con `send2trash`, abrir con `os.startfile`,
+  scripts con `subprocess` sin shell y con tiempo máximo).
+- `agents/automation_tools.py`: integra todo con el orquestador y el motor de tareas.
+
+## Memoria y agentes (Fase 3)
+
+```
+Mensaje → preferencias aprobadas (system) + memorias relevantes (FTS5/BM25, bloque <memoria_relevante>)
+        → Claude con herramientas ──tool_use──► run_tool (validación Pydantic) ──► SQLite
+                  ▲                                                   │
+                  └────────────── tool_result ◄──────────────────────┘   (hasta N pasos)
+```
+
+- `memory/store.py`: memorias con índice FTS5 (`unicode61 remove_diacritics 2`, sin acentos); si SQLite
+  no trae FTS5 se usa búsqueda simple. La interfaz `MemoryStore.search` permite sumar embeddings después.
+- `memory/projects.py`: proyectos con registro de decisiones/avances, archivos y próximos pasos.
+- `agents/tools.py`: herramientas por agente (Memory, Planner) con esquemas autocontenidos
+  (`additionalProperties: false`). Lo que manda el modelo se valida antes de ejecutar; los errores vuelven
+  como `tool_result` con `is_error`. Ninguna herramienta borra datos ni sale del equipo.
+- `providers/anthropic_provider.py`: bucle de tool use con streaming; reenvía el contenido del asistente
+  tal cual (incluye bloques de pensamiento) y maneja `pause_turn` (búsqueda web del servidor). Corta por
+  pasos (`max_tool_iterations`), tokens por solicitud o tiempo, avisando al usuario.
+- Estado `executing` en el núcleo visual mientras corre una herramienta; auditoría `agent.tool`.
+- `database/migrations.py`: agrega columnas nuevas y el índice FTS5 a bases existentes.
+
+## Voz
+
+```
+Interfaz: micrófono → AudioWorklet (PCM) → detector de voz (energía + ruido adaptativo, pre-roll 450 ms)
+          → WAV 16 kHz mono en memoria → POST /voice/transcribe
+KAI Core: WhisperSTT (faster-whisper, CPU int8, VAD) → texto → /chat (channel=voice) → Claude
+          → respuesta → POST /voice/synthesize → PiperTTS (es_AR) → WAV → reproducción (setSinkId)
+```
+
+- `voice/base.py` define `SpeechToText` y `TextToSpeech`; `WhisperSTT` y `PiperTTS` son las
+  implementaciones locales; la interfaz puede usar la Web Speech API del navegador como alternativa.
+- Los modelos se cargan de forma diferida y se ejecutan en hilos (`asyncio.to_thread`) con un lock por motor.
+- La descarga de modelos es explícita (botón) y se informa por WebSocket.
+- **Manos libres**: la interfaz entrega cada frase detectada a Whisper local; sólo si empieza con «Hey KAI»
+  (variantes tolerantes: «Ey Kai», «Oye Kay»…) se envía la orden a Claude. Durante la respuesta hablada, si
+  el usuario habla, se interrumpe (barge-in).
+- Estados: la interfaz informa `listening` / `speaking` (`/voice/state`); KAI Core los muestra cuando no
+  tiene trabajo propio (`processing` tiene prioridad).
+- El audio nunca se escribe en disco ni en la base.
+
 ## Estado del asistente
 
 `StateManager` mantiene el estado real (`idle`, `listening`, `processing`, `speaking`, `executing`,
 `error`), cuenta operaciones concurrentes y publica cada cambio en el `EventBus`. El WebSocket
-`/api/v1/ws/events` reenvía esos eventos (y los de tareas) a todas las interfaces. `listening`,
-`speaking` y `executing` se usarán en las fases 2 y 4; la interfaz ya sabe animarlos.
+`/api/v1/ws/events` reenvía esos eventos (y los de tareas y descargas de voz) a todas las interfaces.
+`executing` se usará en la Fase 4.
 
 ## Persistencia
 

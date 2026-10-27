@@ -8,15 +8,16 @@ resto del sistema.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
 class ChatTurn:
     role: Literal["user", "assistant"]
-    content: str
+    # Texto, o bloques de contenido (p. ej. contexto de memoria + mensaje)
+    content: str | list[dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,31 @@ class GenerationOptions:
     max_tokens: int = 16000
     effort: str | None = None
     use_fallbacks: bool = True
+    # Límites del orquestador (Fase 3)
+    max_tool_iterations: int = 6
+    request_token_budget: int = 200_000
+    timeout_seconds: float = 240.0
+    web_search: bool = False
+    web_fetch: bool = False
+    fast: bool = False  # modo rápido de Claude (sólo Opus 5.5 / Opus 5; cuesta el doble por token)
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    id: str
+    name: str
+    input: Any
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    content: str
+    summary: str
+    ok: bool = True
+    task_id: str | None = None
+
+
+ToolExecutor = Callable[[ToolCall], Awaitable[ToolResult]]
 
 
 @dataclass
@@ -49,7 +75,16 @@ class Completed:
     type: Literal["completed"] = "completed"
 
 
-ProviderEvent = TextDelta | Completed
+@dataclass
+class ToolActivity:
+    name: str
+    summary: str
+    ok: bool
+    task_id: str | None = None
+    type: Literal["tool"] = "tool"
+
+
+ProviderEvent = TextDelta | ToolActivity | Completed
 
 
 @dataclass
@@ -67,7 +102,8 @@ class AIProvider(ABC):
 
     @abstractmethod
     def stream_chat(
-        self, *, system: str, turns: list[ChatTurn], options: GenerationOptions
+        self, *, system: str, turns: list[ChatTurn], options: GenerationOptions,
+        tools: list[dict[str, Any]] | None = None, executor: ToolExecutor | None = None,
     ) -> AsyncIterator[ProviderEvent]: ...
 
     @abstractmethod

@@ -75,13 +75,21 @@ def test_foreign_origin_and_host_are_blocked(client):
     assert client.get("/api/v1/health", headers={"Host": "evil.example"}).status_code == 403
 
 
-def test_remote_client_needs_token(make_settings, data_dir):
+def test_remote_client_needs_remote_access_and_token(make_settings, data_dir):
     app = create_app(make_settings(), secrets=SecretStore(None, use_keyring=False), configure_logging=False)
-    remote = TestClient(app, client=("192.168.1.50", 5000))
-    assert remote.get("/api/v1/health").status_code == 401
+    local = TestClient(app)
+    remote = TestClient(app, client=("192.168.1.50", 5000), base_url="http://192.168.1.10:8765")
     token = (data_dir / "access_token").read_text().strip()
     assert len(token) >= 32
+    r = remote.get("/api/v1/health", headers={"X-KAI-Token": token})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "remote_disabled"
+    local.put("/api/v1/devices/remote", json={"enabled": True})
+    assert remote.get("/api/v1/health").status_code == 401
     assert remote.get("/api/v1/health", headers={"X-KAI-Token": token}).status_code == 200
+    assert remote.get("/api/v1/health", headers={"X-KAI-Token": token, "Host": "evil.example"}).status_code == 403
+    public = TestClient(app, client=("8.8.8.8", 5000), base_url="http://192.168.1.10:8765")
+    r = public.get("/api/v1/health", headers={"X-KAI-Token": token})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "public_network"
 
 
 def test_rate_limiter_window():
@@ -95,3 +103,10 @@ def test_config_parses_origins(make_settings):
     s = make_settings(KAI_ALLOWED_ORIGINS="http://a.test, http://b.test")
     assert s.allowed_origins == ["http://a.test", "http://b.test"]
     assert make_settings().host == "127.0.0.1"
+
+
+def test_own_port_origin_is_always_allowed(make_client):
+    with make_client(KAI_PORT=8899, KAI_ALLOWED_ORIGINS="http://otro.test") as c:
+        assert c.get("/api/v1/health", headers={"Origin": "http://127.0.0.1:8899"}).status_code == 200
+        assert c.get("/api/v1/health", headers={"Origin": "http://otro.test"}).status_code == 200
+        assert c.get("/api/v1/health", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403

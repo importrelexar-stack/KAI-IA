@@ -24,6 +24,7 @@ export function KaiCore({ state, size = 220 }: { state: AssistantState; size?: n
       <span className="wave" />
       <span className="wave" />
       <span className="orb" />
+      {size >= 80 && <span className="orbit" />}
     </div>
   );
 }

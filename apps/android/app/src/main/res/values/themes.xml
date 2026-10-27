@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Kai" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/kai_bg</item>
+        <item name="android:statusBarColor">@color/kai_bg</item>
+        <item name="android:navigationBarColor">@color/kai_bg</item>
+    </style>
+    <color name="kai_bg">#FF05070B</color>
+    <color name="kai_blue">#FF2F7BFF</color>
+</resources>

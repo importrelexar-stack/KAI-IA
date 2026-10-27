@@ -2,18 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge, Card, Notice, PageHeader, formatDate } from "../components/ui";
 import { useApi } from "../hooks/useApi";
 import { post, type Task, type TaskStatus } from "../lib/api";
-
-const LABEL: Record<TaskStatus, string> = {
-  pending: "Pendiente",
-  awaiting_approval: "Esperando autorización",
-  running: "En ejecución",
-  completed: "Completada",
-  failed: "Fallida",
-  cancelled: "Cancelada",
-};
-const TONE: Record<TaskStatus, "muted" | "warn" | "info" | "ok" | "danger"> = {
-  pending: "muted", awaiting_approval: "warn", running: "info", completed: "ok", failed: "danger", cancelled: "muted",
-};
+import { TASK_LABEL as LABEL, TASK_TONE as TONE } from "../lib/taskStatus";
 const NEXT: Record<TaskStatus, TaskStatus[]> = {
   pending: ["awaiting_approval", "running", "cancelled"],
   awaiting_approval: ["cancelled"],
@@ -41,9 +30,7 @@ export function TasksPage({ refreshKey }: { refreshKey: number }) {
       <PageHeader title="Automatizaciones y tareas" subtitle="Motor de tareas por estados con autorizaciones e historial." />
       <div className="mb-4">
         <Notice>
-          Fase 1: las tareas se registran y avanzan de estado manualmente. KAI todavía no ejecuta herramientas por su cuenta;
-          la ejecución automática (archivos, aplicaciones, scripts) llega en la Fase 4 y siempre pedirá confirmación para acciones sensibles.
-        </Notice>
+          Acá quedan las tareas y las acciones que KAI propone. Las que modifican algo (archivos, scripts, integraciones) esperan tu autorización antes de ejecutarse; abrir aplicaciones y leer archivos autorizados no la necesitan, salvo que lo cambies en Archivos.</Notice>
       </div>
       {error && <div className="mb-4"><Notice tone="danger">{error}</Notice></div>}
 
@@ -58,9 +45,13 @@ export function TasksPage({ refreshKey }: { refreshKey: number }) {
                     <Badge tone={TONE[t.status]}>{LABEL[t.status]}</Badge>
                     <Badge>{PRIORITY[t.priority as 1 | 2 | 3]}</Badge>
                     {t.requires_approval && <Badge tone="warn">Requiere autorización</Badge>}
+                    {t.created_by === "kai" && <Badge tone="info">Creada por KAI</Badge>}
                     <span className="ml-auto text-xs text-muted">{formatDate(t.created_at)}</span>
                   </div>
-                  {t.description && <p className="mt-1 text-sm text-muted">{t.description}</p>}
+                  {t.description && <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{t.description}</p>}
+                  {t.depends_on?.length > 0 && (
+                    <p className="mt-1 text-xs text-muted">Depende de: {t.depends_on.map((d) => tasks.data?.find((x) => x.id === d)?.title ?? d).join(", ")}</p>
+                  )}
                   {t.result && <p className="mt-1 text-sm text-ok">Resultado: {t.result}</p>}
                   {t.error && <p className="mt-1 text-sm text-danger">Error: {t.error}</p>}
                   <div className="mt-2 flex flex-wrap gap-2">

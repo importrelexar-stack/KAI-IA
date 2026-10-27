@@ -48,6 +48,10 @@ class Message(Base):
     stop_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    # Herramientas que usó KAI para esta respuesta (Fase 3): [{name, summary, ok}]
+    tool_events: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    # Adjuntos del mensaje del usuario (Fase 5): [{id, name, kind, size}]
+    attachments: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
@@ -88,6 +92,48 @@ class Task(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     approvals: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     history: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    project_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    depends_on: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_by: Mapped[str] = mapped_column(String(16), default="user")  # user | kai
+    # Acción ejecutable al autorizarse (Fase 4): {tool, args, conversation_id}
+    action: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Project(Base):
+    """Memoria de proyectos: objetivo, decisiones, avances y próximos pasos."""
+
+    __tablename__ = "projects"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(64), default=DEFAULT_USER, index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    goal: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active | paused | done
+    next_steps: Mapped[str] = mapped_column(Text, default="")
+    files: Mapped[list[str]] = mapped_column(JSON, default=list)
+    log: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)  # decisiones y avances
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Memory(Base):
+    """Memoria persistente consultable, editable y eliminable por el usuario."""
+
+    __tablename__ = "memories"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(64), default=DEFAULT_USER, index=True)
+    kind: Mapped[str] = mapped_column(String(16), index=True)  # preference | fact | project
+    content: Mapped[str] = mapped_column(Text)
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)  # active | proposed
+    source: Mapped[str] = mapped_column(String(16), default="user")  # user | kai
+    project_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    conversation_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -107,6 +153,66 @@ class CoworkHandoff(Base):
     conversation_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Routine(Base):
+    """Rutina programada (Fase 6): un pedido que KAI ejecuta solo según un horario."""
+
+    __tablename__ = "routines"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(80))
+    prompt: Mapped[str] = mapped_column(Text)
+    schedule: Mapped[dict[str, Any]] = mapped_column(JSON)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    conversation_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_status: Mapped[str | None] = mapped_column(String(16), nullable=True)  # ok | error | running
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    run_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Device(Base):
+    """Dispositivo vinculado (p. ej. el teléfono). El token se guarda sólo como hash."""
+
+    __tablename__ = "devices"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(64), default=DEFAULT_USER, index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    platform: Mapped[str] = mapped_column(String(32), default="android")
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    revoked: Mapped[bool] = mapped_column(default=False)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PairingCode(Base):
+    __tablename__ = "pairing_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code_hash: Mapped[str] = mapped_column(String(64), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used: Mapped[bool] = mapped_column(default=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(64), default=DEFAULT_USER)
+    name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(16))  # document | image
+    media_type: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str | None] = mapped_column(Text, nullable=True)  # texto extraído (documentos)
+    path: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class AuditLog(Base):

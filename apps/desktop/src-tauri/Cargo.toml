@@ -1,0 +1,26 @@
+[package]
+name = "kai-desktop"
+version = "0.9.7"
+description = "KAI AI — app de escritorio"
+edition = "2021"
+publish = false
+
+[lib]
+name = "kai_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = ["tray-icon"] }
+tauri-plugin-shell = "2.5"
+tauri-plugin-single-instance = "2.5"
+tauri-plugin-global-shortcut = "2.4"
+log = "0.4"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

@@ -21,7 +21,10 @@ if (Test-KaiHealth $port) {
 }
 
 if (-not (Test-Path (Join-Path $WebDir 'dist\index.html'))) {
-    Write-Warn "La interfaz no está compilada (scripts\build-web.ps1). Sólo estará disponible la API en /docs."
+    Write-Warn "La interfaz no está compilada: intentando descargarla ya compilada…"
+    if (-not (Install-PrebuiltWeb)) {
+        Write-Warn "Sin interfaz (ejecutá scripts\build-web.ps1). Sólo estará disponible la API en /docs."
+    }
 }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $DataDir 'logs') | Out-Null
