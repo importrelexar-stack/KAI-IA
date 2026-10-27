@@ -123,6 +123,8 @@ export interface Preferences {
   max_tool_iterations: number;
   fast_mode: boolean;
   auto_update: boolean;
+  startup_greeting: boolean;
+  startup_greeting_voice: boolean;
 }
 
 export interface ApiKeyStatus {

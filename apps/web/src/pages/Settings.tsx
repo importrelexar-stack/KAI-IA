@@ -106,6 +106,21 @@ export function SettingsPage() {
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm md:col-span-2">
+            <input type="checkbox" className="mt-1" checked={prefs.startup_greeting} onChange={(e) => setPrefs({ ...prefs, startup_greeting: e.target.checked })} />
+            <span>
+              Saludarme al abrir KAI
+              <span className="block text-xs text-muted">Muestra el saludo con la fecha y la hora y te pregunta qué reporte querés que te arme.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm md:col-span-2">
+            <input type="checkbox" className="mt-1" checked={prefs.startup_greeting_voice} disabled={!prefs.startup_greeting}
+              onChange={(e) => setPrefs({ ...prefs, startup_greeting_voice: e.target.checked })} />
+            <span>
+              Decir el saludo en voz alta
+              <span className="block text-xs text-muted">Usa la voz de KAI (pantalla Voz). Si no hay voz disponible, el saludo sólo se muestra.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm md:col-span-2">
             <input type="checkbox" className="mt-1" checked={prefs.auto_update} onChange={(e) => setPrefs({ ...prefs, auto_update: e.target.checked })} />
             <span>
               Actualizar KAI automáticamente (app de escritorio)

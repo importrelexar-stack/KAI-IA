@@ -37,6 +37,9 @@ class Preferences(BaseModel):
     fast_mode: bool = False
     # App de escritorio: buscar, bajar e instalar versiones nuevas sola (cuando no se está usando).
     auto_update: bool = True
+    # Al abrir KAI: saludo con fecha y hora y la pregunta de qué reporte armar (y si lo dice en voz alta)
+    startup_greeting: bool = True
+    startup_greeting_voice: bool = True
 
     @field_validator("model")
     @classmethod
@@ -70,6 +73,8 @@ class PreferencesUpdate(BaseModel):
     max_tool_iterations: int | None = Field(default=None, ge=1, le=15)
     fast_mode: bool | None = None
     auto_update: bool | None = None
+    startup_greeting: bool | None = None
+    startup_greeting_voice: bool | None = None
 
     @field_validator("model")
     @classmethod

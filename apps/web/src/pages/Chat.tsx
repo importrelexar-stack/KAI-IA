@@ -11,7 +11,7 @@ import { MicCapture } from "../lib/mic";
 import { PendingAction } from "../components/PendingAction";
 import { browserVoice, effectiveSttEngine } from "../lib/speech";
 import { SttSetup } from "../components/SttSetup";
-import { navigate } from "../lib/nav";
+import { navigate, takePendingPrompt } from "../lib/nav";
 
 const MAX_ATTACHMENTS = 5;
 const ACCEPT = "image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv,.json,.log,.xml,.html,.py,.js,.ts";
@@ -112,6 +112,18 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Pedido enviado desde otra pantalla (p. ej. el saludo de bienvenida: «¿qué reporte te armo?»)
+  useEffect(() => {
+    const run = () => {
+      if (conversationId) return;
+      const p = takePendingPrompt();
+      if (p) void send(p);
+    };
+    run();
+    window.addEventListener("kai:ask", run);
+    return () => window.removeEventListener("kai:ask", run);
+  }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function attach(files: FileList | null) {
     if (!files) return;
     const list = Array.from(files).slice(0, Math.max(0, MAX_ATTACHMENTS - attachments.length));
@@ -130,8 +142,8 @@ export function ChatPage({ conversationId }: { conversationId: string | null }) 
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(override?: string) {
+    const text = (override ?? input).trim();
     const sent = attachments;
     if ((!text && !sent.length) || busy || uploading) return;
     setInput("");

@@ -19,6 +19,7 @@ import { DevicesPage } from "./pages/Devices";
 import { IntegrationsPage } from "./pages/Integrations";
 import { RoutinesPage } from "./pages/Routines";
 import { UpdateButton } from "./components/UpdateButton";
+import { WelcomeGreeting } from "./components/WelcomeGreeting";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Principal" },
@@ -67,6 +68,7 @@ export default function App() {
 
   return (
     <div className="flex h-full">
+      <WelcomeGreeting />
       <nav className="flex w-64 shrink-0 flex-col border-r border-line/70 bg-graphite/60 p-3 backdrop-blur-xl" aria-label="Principal">
         <a href="#/dashboard" className="mb-4 flex items-center gap-3 rounded-xl px-2 py-2">
           <KaiCore state={state} size={40} />
@@ -95,7 +97,7 @@ export default function App() {
             </div>
           ))}
         </div>
-        <UpdateButton version="0.9.6" />
+        <UpdateButton version="0.9.7" />
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
